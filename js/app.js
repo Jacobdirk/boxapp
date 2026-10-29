@@ -108,15 +108,36 @@
     });
   }
 
-  async function exerciseView(id) {
+  const REP_RANGES = [1, 3, 5, 8, 12];
+  const repRange = reps => REP_RANGES.find(r => reps <= r) || 12;
+
+  // Logs for a rep range (chronological). Sets with more reps also count for a lower range
+  // when their weight beats the best weight in that range so far.
+  const rangeLogs = (logs, range) => {
+    let best = -Infinity;
+    const out = [];
+    for (const l of [...logs].reverse()) {
+      const r = repRange(l.reps);
+      if (r < range) continue;
+      const carried = r > range;
+      if (carried && l.weight <= best) continue;
+      best = Math.max(best, l.weight);
+      out.push({ ...l, carried });
+    }
+    return out;
+  };
+
+  async function exerciseView(id, range) {
     const user = await repo.getCurrentUser();
     const ex = await repo.getExercise(id);
     if (!ex) return location.hash = '#/';
     const logs = await repo.getLogs(user.id, id);
     const last = logs[0];
-    const recent = logs.slice(0, 4).reverse();
     const fav = await repo.isFavorite(user.id, id);
-    const max = Math.max(1, ...recent.map(l => l.weight * l.reps));
+    range = range || (last ? repRange(last.reps) : 8);
+    const counts = Object.fromEntries(REP_RANGES.map(r => [r, rangeLogs(logs, r).length]));
+    const recent = rangeLogs(logs, range).slice(-6);
+    const max = Math.max(1, ...recent.map(l => l.weight));
 
     view.innerHTML = `
       <button class="back" onclick="history.back()">←</button>
@@ -131,12 +152,13 @@
         ${last ? `<div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
       </div>
       <h3>Jouw progressie</h3>
+      <div class="seg" role="tablist" aria-label="Rep range">${REP_RANGES.map(r => `<button data-range="${r}" class="${r === range ? 'on' : ''}" ${counts[r] ? '' : 'disabled'}>${r === 12 ? '12+' : r}</button>`).join('')}</div>
       ${recent.length ? `<div class="chart">${recent.map(l => `
         <div class="bar-wrap">
-          <div class="bar-val">${l.weight * l.reps}</div>
-          <div class="bar" style="height:${(l.weight * l.reps / max) * 85}%"></div>
+          <div class="bar-val">${l.weight} kg</div>
+          <div class="bar ${l.carried ? 'carried' : ''}" style="height:${(l.weight / max) * 85}%" title="${fmtSet(l)}${l.carried ? ' (meer reps)' : ''}"></div>
           <div class="bar-label">${fmtShort(l.logged_at)}</div>
-        </div>`).join('')}</div><div class="muted">Gewicht × reps</div>` : `<div class="card empty">Log je eerste set om progressie te zien</div>`}
+        </div>`).join('')}</div><div class="muted">Werkgewicht (kg) bij ${range === 12 ? '9+' : range === 1 ? '1' : `${REP_RANGES[REP_RANGES.indexOf(range) - 1] + 1}–${range}`} reps</div>` : `<div class="card empty">${logs.length ? 'Geen sessies in deze rep range' : 'Log je eerste set om progressie te zien'}</div>`}
       <h3>Geschiedenis</h3>
       <div class="card table">${logs.length ? logs.slice(0, 10).map(l => `
         <div class="tr"><span>${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
@@ -144,8 +166,9 @@
       <a class="btn primary" href="#/exercise/${id}/log">＋ Log deze oefening</a>`;
     document.getElementById('fav').addEventListener('click', async () => {
       await repo.setFavorite(user.id, id, !fav);
-      exerciseView(id);
+      exerciseView(id, range);
     });
+    view.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => exerciseView(id, +b.dataset.range)));
   }
 
   async function logView(id) {

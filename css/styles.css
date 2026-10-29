@@ -74,4 +74,10 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .colors { display: flex; gap: 8px; flex-wrap: wrap; }
 .swatch { width: 36px; height: 36px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; }
 .swatch.on { border-color: var(--text); }
-.empty {
+.bar.carried { background: repeating-linear-gradient(45deg, var(--accent) 0 6px, #138a5c 6px 12px); }
+.seg { display: flex; gap: 2px; margin-bottom: 12px; padding: 3px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+.seg button { flex: 1; padding: 7px 0; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+.seg button:hover:not(:disabled):not(.on) { color: var(--text); background: var(--card2); }
+.seg button.on { background: var(--accent); color: #04271a; }
+.seg button:disabled { opacity: .3; cursor: default; }
+.empty { padding: 16px; text-align: center; color: var(--muted); font-size: .9rem; }
