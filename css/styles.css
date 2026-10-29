@@ -88,3 +88,6 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .empty { padding: 16px; text-align: center; color: var(--muted); font-size: .9rem; }
 .onboarding { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; }
 .onboarding form { margin-top: 24px; }
+.last-row { display: flex; gap: 12px; align-items: stretch; margin-top: 12px; }
+.last-row .last { flex: 1; margin-top: 0; }
+.last-row .log-btn { flex: 1; width: auto; margin-top: 0; text-decoration: none; text-align: center; }

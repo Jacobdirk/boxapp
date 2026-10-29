@@ -152,9 +152,12 @@
         <button class="star ${fav ? 'on' : ''}" id="fav" title="Favoriet">${fav ? '★' : '☆'}</button>
         <a class="star" href="#/exercise/${id}/edit" title="Bewerken">✎</a>
       </div>
-      <div class="card last">
-        <div class="muted">Laatste keer</div>
-        ${last ? `<div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
+      <div class="last-row">
+        <div class="card last">
+          <div class="muted">Laatste keer</div>
+          ${last ? `<div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
+        </div>
+        <a class="btn primary log-btn" href="#/exercise/${id}/log">＋ Log deze oefening</a>
       </div>
       ${variants.length ? `<h3>Snel wisselen</h3><div class="chips">${variants.map(v => `
         <a class="chip" href="#/exercise/${v.id}"><span class="chip-icon c-${v.color}">${v.icon}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
@@ -169,8 +172,7 @@
       <h3>Geschiedenis</h3>
       <div class="card table">${logs.length ? logs.slice(0, 10).map(l => `
         <div class="tr"><span>${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
-      </div>
-      <a class="btn primary" href="#/exercise/${id}/log">＋ Log deze oefening</a>`;
+      </div>`;
     document.getElementById('fav').addEventListener('click', async () => {
       await repo.setFavorite(user.id, id, !fav);
       exerciseView(id, range);
