@@ -774,6 +774,20 @@
   const armTrap = () => { if (!(history.state && history.state.trap)) history.pushState({ trap: true }, '', location.href); };
   document.addEventListener('pointerdown', armTrap, true);
   document.addEventListener('keydown', armTrap, true);
+
+  // Android back gesture/button (Chrome 120+, incl. installed PWA): a CloseWatcher receives
+  // the back press before history does. Cancel it silently when allowed; otherwise re-create it.
+  if ('CloseWatcher' in window) {
+    const watch = () => {
+      try {
+        const w = new CloseWatcher();
+        w.oncancel = ev => { if (ev.cancelable) ev.preventDefault(); };
+        w.onclose = () => watch();
+      } catch { /* not allowed right now; re-armed on next tap */ }
+    };
+    watch();
+    document.addEventListener('pointerdown', () => { if (!navigator.userActivation || navigator.userActivation.isActive) watch(); }, { capture: true, once: true });
+  }
   document.addEventListener('click', ev => {
     const a = ev.target.closest('a[href]');
     if (a && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
