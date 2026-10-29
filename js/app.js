@@ -76,7 +76,7 @@
       <div class="header">
         <div class="icon c-green">💪</div>
         <div class="grow"><h1>Box App</h1><div class="muted accent">Log. Compare. Get stronger.</div></div>
-        <a class="avatar" href="#/profile">${esc(user.initials)}</a>
+        <a class="avatar" href="#/profile">${avatarInner(user)}</a>
       </div>
       <h2>Mijn oefeningen</h2>
       <div class="muted">Jouw favoriete oefeningen · ${main.length}</div>
@@ -343,19 +343,77 @@
     });
   }
 
+  const avatarInner = u => u.photo ? `<img src="${u.photo}" alt="" />` : esc(u.initials);
+
+  // Downscale a picked/captured image to a small square JPEG data URL (keeps localStorage small)
+  const imageToDataUrl = (file, size = 192) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(img.width, img.height);
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+
+  const isPhone = () => window.matchMedia('(pointer: coarse)').matches && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   async function profileView() {
     const user = await repo.getCurrentUser();
     const users = await repo.getUsers();
+    const captcha = Array.from({ length: 5 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
     view.innerHTML = `
-      <div class="header"><div class="avatar lg active">${esc(user.initials)}</div><div class="grow"><h1>${esc(user.name)}</h1></div></div>
+      <div class="header">
+        <label class="avatar lg active avatar-edit" title="Profielfoto wijzigen">${avatarInner(user)}<span class="avatar-cam">📷</span>
+          <input id="photo" type="file" accept="image/*" ${isPhone() ? 'capture="user"' : ''} hidden /></label>
+        <div class="grow"><h1>${esc(user.name)}</h1>${user.photo ? `<button class="link-btn" id="photo-remove">Foto verwijderen</button>` : ''}</div>
+      </div>
+      <h3>Profiel</h3>
+      <form class="field" id="rename"><label for="r-name">Naam</label>
+        <div class="stepper"><input id="r-name" maxlength="40" value="${esc(user.name)}" required /></div>
+        <button class="btn" type="submit">Naam opslaan</button></form>
       <h3>Wissel van gebruiker</h3>
       <div class="users">
-        ${users.map(u => `<div class="u"><button class="avatar lg ${u.id === user.id ? 'active' : ''}" data-id="${u.id}">${esc(u.initials)}</button>${esc(u.name)}</div>`).join('')}
+        ${users.map(u => `<div class="u"><button class="avatar lg ${u.id === user.id ? 'active' : ''}" data-id="${u.id}">${avatarInner(u)}</button>${esc(u.name)}</div>`).join('')}
         <div class="u"><button class="avatar lg" id="add">＋</button>Nieuw</div>
       </div>
       <h3>Beheer</h3>
       <a class="btn" href="#/exercises">Oefeningen beheren</a>
+      <details class="card danger-zone">
+        <summary>🗑️ Profiel "${esc(user.name)}" verwijderen</summary>
+        <p class="muted">Dit verwijdert het profiel, alle logs en favorieten. Typ <b class="captcha">${captcha}</b> om te bevestigen.</p>
+        <form id="del-user"><div class="stepper"><input id="del-code" autocomplete="off" autocapitalize="characters" placeholder="${captcha}" /></div>
+          <button class="btn danger" id="del-btn" type="submit" disabled>Profiel definitief verwijderen</button></form>
+      </details>
       <button class="btn danger" id="reset">Alles resetten naar standaard</button>`;
+    document.getElementById('photo').addEventListener('change', async ev => {
+      const file = ev.target.files[0];
+      if (!file) return;
+      try { await repo.updateUser(user.id, { photo: await imageToDataUrl(file) }); }
+      catch { alert('Kon de afbeelding niet laden.'); }
+      router();
+    });
+    document.getElementById('photo-remove')?.addEventListener('click', async () => { await repo.updateUser(user.id, { photo: null }); router(); });
+    document.getElementById('rename').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const name = document.getElementById('r-name').value.trim();
+      if (!name) return;
+      await repo.updateUser(user.id, { name });
+      router();
+    });
+    const code = document.getElementById('del-code'), delBtn = document.getElementById('del-btn');
+    code.addEventListener('input', () => { delBtn.disabled = code.value.trim().toUpperCase() !== captcha; });
+    document.getElementById('del-user').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (code.value.trim().toUpperCase() !== captcha) return;
+      await repo.deleteUser(user.id);
+      location.hash = '#/';
+      router();
+    });
     document.getElementById('reset').addEventListener('click', async () => {
       if (!confirm('Alle gebruikers, oefeningen en logs wissen en standaard oefeningen terugzetten?')) return;
       await repo.resetDatabase();
@@ -686,7 +744,7 @@
       <div class="side-title">Sporters</div>
       ${users.map(u => `
         <button class="side-user ${current && u.id === current.id ? 'active' : ''}" data-id="${u.id}">
-          <span class="avatar">${esc(u.initials)}</span><span class="grow">${esc(u.name)}</span>
+          <span class="avatar">${avatarInner(u)}</span><span class="grow">${esc(u.name)}</span>
         </button>`).join('')}
       <a class="side-user add" href="#/profile"><span class="avatar">+</span><span class="grow">Profiel toevoegen</span></a>`;
     side.querySelectorAll('button[data-id]').forEach(b => b.addEventListener('click', async () => {

@@ -3,7 +3,7 @@
  * Data is stored as normalized "tables" (users, exercises, logs) with
  * numeric ids and foreign keys, so it maps 1:1 onto a future SQL schema:
  *
- *   users     (id PK, name, initials, created_at)
+ users     (id PK, name, initials, photo TEXT NULL, created_at)
  *   exercises (id PK, name, muscles, icon, color, category, variant_group NULL)
  *              category: 'main' | 'filler'; variant_group: e.g. 'row' (quick swap)
  *   logs      (id PK, user_id FK->users, exercise_id FK->exercises ON DELETE CASCADE,
@@ -156,6 +156,24 @@
         .forEach(e => this.db.favorites.push({ user_id: user.id, exercise_id: e.id, created_at: user.created_at }));
       this._save();
       return user;
+    }
+    async updateUser(id, { name, photo }) {
+      const user = this.db.users.find(u => u.id === id);
+      if (!user) return null;
+      if (name !== undefined) {
+        user.name = name;
+        user.initials = name.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
+      }
+      if (photo !== undefined) user.photo = photo || null;
+      this._save();
+      return user;
+    }
+    async deleteUser(id) {
+      this.db.users = this.db.users.filter(u => u.id !== id);
+      this.db.logs = this.db.logs.filter(l => l.user_id !== id);
+      this.db.favorites = this.db.favorites.filter(f => f.user_id !== id);
+      if (this.db.meta.currentUserId === id) this.db.meta.currentUserId = this.db.users[0]?.id ?? null;
+      this._save();
     }
 
     // Exercises
