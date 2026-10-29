@@ -383,6 +383,8 @@
       </div>
       <h3>Beheer</h3>
       <a class="btn" href="#/exercises">Oefeningen beheren</a>
+      <button class="btn" id="export">⬇️ Back-up exporteren</button>
+      <label class="btn">⬆️ Back-up importeren<input id="import" type="file" accept="application/json,.json" hidden /></label>
       <details class="card danger-zone">
         <summary>🗑️ Profiel "${esc(user.name)}" verwijderen</summary>
         <p class="muted">Dit verwijdert het profiel, alle logs en favorieten. Typ <b class="captcha">${captcha}</b> om te bevestigen.</p>
@@ -413,6 +415,41 @@
       await repo.deleteUser(user.id);
       location.hash = '#/';
       router();
+    });
+    document.getElementById('export').addEventListener('click', async () => {
+      const dump = await repo.exportDatabase();
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      const name = `boxapp-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
+      const json = JSON.stringify(dump, null, 2);
+      const file = new File([json], name, { type: 'application/json' });
+      if (isPhone() && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Box App back-up' }); return; }
+        catch (e) { if (e.name === 'AbortError') return; }
+      }
+      const blob = new Blob([json], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+    document.getElementById('import').addEventListener('change', async ev => {
+      const file = ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      try {
+        const dump = JSON.parse(await file.text());
+        const d = dump.data || dump;
+        const summary = `${d.users?.length ?? 0} gebruikers, ${d.exercises?.length ?? 0} oefeningen, ${d.logs?.length ?? 0} logs`;
+        if (!confirm(`Back-up importeren (${summary})?\nAlle huidige gegevens worden overschreven.`)) return;
+        await repo.importDatabase(dump);
+        location.hash = '#/';
+        router();
+      } catch (e) {
+        alert(`Importeren mislukt: ${e.message}`);
+      }
     });
     document.getElementById('reset').addEventListener('click', async () => {
       if (!confirm('Alle gebruikers, oefeningen en logs wissen en standaard oefeningen terugzetten?')) return;
@@ -790,7 +827,7 @@
   }
   document.addEventListener('click', ev => {
     const a = ev.target.closest('a[href]');
-    if (a && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
+    if (a && !a.hasAttribute('download') && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
   }, true);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {

@@ -138,6 +138,17 @@
 
     // Reset to initial feed (wipes all data)
     async resetDatabase() { this.db = seedDatabase(); this._save(); }
+    async exportDatabase() {
+      return { app: 'boxapp', exported_at: new Date().toISOString(), data: JSON.parse(JSON.stringify(this.db)) };
+    }
+    async importDatabase(dump) {
+      const data = dump && dump.app === 'boxapp' ? dump.data : dump;
+      if (!data || !Array.isArray(data.users) || !Array.isArray(data.exercises) || !Array.isArray(data.logs) || !data.meta) {
+        throw new Error('Ongeldig back-upbestand');
+      }
+      this.db = migrate(data);
+      this._save();
+    }
 
     // Users
     async getUsers() { return [...this.db.users]; }

@@ -181,3 +181,7 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .danger-zone form { display: flex; flex-direction: column; gap: 8px; }
 .captcha { font-family: ui-monospace, Consolas, monospace; letter-spacing: .25em; background: rgba(255,255,255,.08); padding: 2px 8px; border-radius: 6px; color: var(--text); user-select: none; }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
+label.btn { cursor: pointer; }
+.danger-zone > summary { list-style: none; }
+.danger-zone > summary::-webkit-details-marker { display: none; }
+.danger-zone > summary { text-align: center; }
