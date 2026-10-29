@@ -779,6 +779,10 @@
     if (a && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
   }, true);
 
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
   window.addEventListener('hashchange', router);
   router();
 })();
