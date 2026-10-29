@@ -4,6 +4,7 @@
   const fmtDate = iso => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
   const fmtShort = iso => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const fmtSet = l => `${l.weight} kg × ${l.reps}${l.sets ? ` (${l.sets} sets)` : ''}`;
+  const fmtLast = l => `${l.weight} kg × ${l.reps}`;
   const delta = n => n > 0 ? `<span class="up">+${n}</span>` : n < 0 ? `<span class="down">${n}</span>` : `<span class="same">±0</span>`;
 
   const exerciseRow = e => `
@@ -145,7 +146,7 @@
     const max = Math.max(1, ...recent.map(l => l.weight));
 
     view.innerHTML = `
-      <button class="back" onclick="history.back()">←</button>
+      <button class="back" onclick="location.hash='#/'">←</button>
       <div class="header">
         <div class="icon lg c-${ex.color}">${ex.icon}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
@@ -155,7 +156,7 @@
       <div class="last-row">
         <div class="card last">
           <div class="muted">Laatste keer</div>
-          ${last ? `<div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
+          ${last ? `<div class="big">${fmtLast(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
         </div>
         <a class="btn primary log-btn" href="#/exercise/${id}/log">＋ Log deze oefening</a>
       </div>
@@ -200,15 +201,19 @@
         <div class="icon lg c-${ex.color}">${ex.icon}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
       </div>
-      ${last ? `<div class="card last"><div class="muted">Laatste keer</div><div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div></div>` : ''}
+      <div class="last-row">
+        ${last ? `<div class="card last"><div class="muted">Laatste keer</div><div class="big">${fmtLast(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div></div>` : ''}
+        <div class="actions">
+          <button class="btn primary" id="save">Opslaan</button>
+          <button class="btn" onclick="history.back()">Annuleren</button>
+        </div>
+      </div>
       <h3>Voer je gewicht en reps in</h3>
       ${stepper('weight', 'Gewicht (kg)', 2.5)}
       ${stepper('reps', 'Reps', 1)}
       <h3>Optioneel</h3>
       ${stepper('sets', 'Sets', 1)}
-      <div id="cmp"></div>
-      <button class="btn primary" id="save">Opslaan</button>
-      <button class="btn" onclick="history.back()">Annuleren</button>`;
+      <div id="cmp"></div>`;
 
     const read = k => parseFloat(document.getElementById('f-' + k).value) || 0;
     const renderCompare = () => {
