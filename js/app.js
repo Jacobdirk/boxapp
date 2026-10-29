@@ -95,28 +95,75 @@
     const user = await repo.getCurrentUser();
     const all = await repo.getExercises();
     const favs = new Set((await repo.getFavoriteExercises(user.id)).map(e => e.id));
+    const lastUsed = {};
+    (await repo.getAllLogs(user.id)).forEach(l => { if (!lastUsed[l.exercise_id] || l.logged_at > lastUsed[l.exercise_id]) lastUsed[l.exercise_id] = l.logged_at; });
     const row = e => `
-      <div class="row">
+      <div class="row" data-search="${esc((e.name + ' ' + e.muscles).toLowerCase())}">
         <a class="icon c-${e.color}" href="#/exercise/${e.id}" style="text-decoration:none">${e.icon}</a>
-        <a class="grow" href="#/exercise/${e.id}" style="color:inherit;text-decoration:none"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></a>
+        <a class="grow" href="#/exercise/${e.id}" style="color:inherit;text-decoration:none"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}${e.category !== 'main' && lastUsed[e.id] ? ` · ${agoLabel(lastUsed[e.id]).toLowerCase()}` : ''}</div></a>
         <button class="star ${favs.has(e.id) ? 'on' : ''}" data-fav="${e.id}" title="Favoriet">${favs.has(e.id) ? '★' : '☆'}</button>
       </div>`;
     const group = (title, cat) => {
       const list = all.filter(e => e.category === cat);
-      return list.length ? `<h3>${title}</h3><div class="list">${list.map(row).join('')}</div>` : '';
+      if (cat !== 'main') list.sort((a, b) => (lastUsed[b.id] || '').localeCompare(lastUsed[a.id] || '') || a.name.localeCompare(b.name));
+      return list.length ? `<section class="ex-group"><h3>${title}</h3><div class="list">${list.map(row).join('')}</div></section>` : '';
     };
     view.innerHTML = `
       <button class="back" onclick="location.hash='#/'">←</button>
       <div class="header"><div class="grow"><h1>Alle oefeningen</h1><div class="muted">Tik op ☆ om een favoriet te maken</div></div></div>
+      <div class="search-box"><span>🔍</span><input id="ex-search" type="search" placeholder="Zoek oefening of spiergroep…" autocomplete="off" /></div>
       ${group('Hoofdoefeningen', 'main')}
       ${group('Overig / Filler', 'filler')}
+      <div class="card empty" id="ex-none" hidden>Geen oefeningen gevonden.</div>
       <a class="btn primary" href="#/exercise/new">＋ Nieuwe oefening</a>`;
+    const search = document.getElementById('ex-search');
+    const applyFilter = () => {
+      const q = search.value.trim().toLowerCase();
+      let any = false;
+      view.querySelectorAll('.ex-group').forEach(g => {
+        let shown = 0;
+        g.querySelectorAll('.row').forEach(r => { const ok = !q || r.dataset.search.includes(q); r.hidden = !ok; if (ok) shown++; });
+        g.hidden = !shown;
+        any = any || shown > 0;
+      });
+      document.getElementById('ex-none').hidden = any;
+    };
+    search.addEventListener('input', applyFilter);
+    if (exercisesView.query) { search.value = exercisesView.query; applyFilter(); }
+    search.addEventListener('input', () => { exercisesView.query = search.value; });
     view.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', async () => {
       const id = +b.dataset.fav;
       await repo.setFavorite(user.id, id, !favs.has(id));
       exercisesView();
     }));
   }
+
+  async function openSearch() {
+    const overlay = document.getElementById('search-overlay');
+    const input = document.getElementById('global-search');
+    const results = document.getElementById('search-results');
+    const all = await repo.getExercises();
+    const render = () => {
+      const q = input.value.trim().toLowerCase();
+      const list = q ? all.filter(e => (e.name + ' ' + e.muscles).toLowerCase().includes(q)) : all;
+      results.innerHTML = list.length ? list.slice(0, 30).map(e => `
+        <a class="row" href="#/exercise/${e.id}">
+          <div class="icon c-${e.color}">${e.icon}</div>
+          <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></div>
+          <span class="chev">›</span>
+        </a>`).join('') : `<div class="card empty">Geen oefeningen gevonden.</div>`;
+    };
+    input.value = '';
+    input.oninput = render;
+    render();
+    overlay.hidden = false;
+    input.focus();
+  }
+
+  function closeSearch() { document.getElementById('search-overlay').hidden = true; }
+  document.querySelector('[data-search-open]').addEventListener('click', ev => { ev.preventDefault(); openSearch(); });
+  document.getElementById('search-overlay').addEventListener('click', ev => { if (ev.target.id === 'search-overlay' || ev.target.closest('a,[data-search-close]')) closeSearch(); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeSearch(); });
 
   const COLORS = ['green', 'blue', 'yellow', 'purple', 'orange', 'teal', 'slate'];
 

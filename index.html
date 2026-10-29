@@ -9,7 +9,7 @@
   <meta http-equiv="Expires" content="0" />
   <title>Box App</title>
   <!-- Cache buster: bump ?v= on every release -->
-  <link rel="stylesheet" href="css/styles.css?v=1.12.0" />
+  <link rel="stylesheet" href="css/styles.css?v=1.13.0" />
 </head>
 <body>
   <div class="app">
@@ -17,12 +17,19 @@
     <main id="view"></main>
     <nav class="tabbar">
       <a href="#/" data-tab="home"><span>🏠</span>Home</a>
+      <a href="#" data-search-open><span>🔍</span>Zoek</a>
       <a href="#/history" data-tab="history"><span>📋</span>History</a>
       <a href="#/comparisons" data-tab="comparisons"><span>📊</span>Ranking</a>
       <a href="#/profile" data-tab="profile"><span>👤</span>Profile</a>
     </nav>
+    <div id="search-overlay" class="search-overlay" hidden>
+      <div class="search-panel">
+        <div class="search-box"><span>🔍</span><input id="global-search" type="search" placeholder="Zoek oefening…" autocomplete="off" /><button class="search-close" data-search-close aria-label="Sluiten">✕</button></div>
+        <div id="search-results" class="list"></div>
+      </div>
+    </div>
   </div>
-  <script src="js/db.js?v=1.12.0"></script>
-  <script src="js/app.js?v=1.12.0"></script>
+  <script src="js/db.js?v=1.13.0"></script>
+  <script src="js/app.js?v=1.13.0"></script>
 </body>
 </html>
