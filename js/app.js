@@ -316,13 +316,13 @@
       router();
     });
     view.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', async () => {
-      await repo.setCurrentUser(+b.dataset.id); profileView();
+      await repo.setCurrentUser(+b.dataset.id); router();
     }));
     document.getElementById('add').addEventListener('click', async () => {
       const name = (prompt('Naam van nieuwe gebruiker:') || '').trim();
       if (!name) return;
       const u = await repo.addUser(name);
-      await repo.setCurrentUser(u.id); profileView();
+      await repo.setCurrentUser(u.id); router();
     });
   }
 
@@ -631,8 +631,27 @@
     });
   }
 
+  async function renderSidebar() {
+    const side = document.getElementById('sidebar');
+    if (!side) return;
+    const [users, current] = [await repo.getUsers(), await repo.getCurrentUser()];
+    side.innerHTML = `
+      <div class="side-title">Sporters</div>
+      ${users.map(u => `
+        <button class="side-user ${current && u.id === current.id ? 'active' : ''}" data-id="${u.id}">
+          <span class="avatar">${esc(u.initials)}</span><span class="grow">${esc(u.name)}</span>
+        </button>`).join('')}
+      <a class="side-user add" href="#/profile"><span class="avatar">+</span><span class="grow">Profiel toevoegen</span></a>`;
+    side.querySelectorAll('button[data-id]').forEach(b => b.addEventListener('click', async () => {
+      await repo.setCurrentUser(+b.dataset.id);
+      router();
+    }));
+  }
+
   async function router() {
-    if (!(await repo.getCurrentUser())) return onboardingView();
+    if (!(await repo.getCurrentUser())) { document.getElementById('sidebar').hidden = true; return onboardingView(); }
+    document.getElementById('sidebar').hidden = false;
+    renderSidebar();
     const hash = location.hash || '#/';
     for (const [re, fn, tab] of routes) {
       const m = hash.match(re);
