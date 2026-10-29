@@ -212,6 +212,11 @@
         .sort((a, b) => b.logged_at.localeCompare(a.logged_at));
     }
     async getLastLog(userId, exerciseId) { return (await this.getLogs(userId, exerciseId))[0] || null; }
+    async getAllLogs(userId) {
+      return this.db.logs
+        .filter(l => l.user_id === userId)
+        .sort((a, b) => b.logged_at.localeCompare(a.logged_at));
+    }
     async addLog({ user_id, exercise_id, weight, reps, sets = null }) {
       const log = { id: this._nextId('logs'), user_id, exercise_id, weight, reps, sets, logged_at: new Date().toISOString() };
       this.db.logs.push(log);

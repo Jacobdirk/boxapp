@@ -93,3 +93,45 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .last-row .log-btn { flex: 1; width: auto; margin-top: 0; text-decoration: none; text-align: center; }
 .last-row .actions { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .last-row .actions .btn { margin-top: 0; flex: 1; }
+.row.collapse { width: 100%; margin-top: 16px; font: inherit; color: var(--text); text-align: left; }
+.line-chart svg { width: 100%; height: auto; display: block; }
+.line-chart .grid { stroke: var(--border); stroke-width: 1; }
+.line-chart .axis { fill: var(--muted); font-size: 10px; }
+.line-chart .ln { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.line-chart .pt { stroke: var(--card); stroke-width: 2; }
+.ln.me { stroke: var(--accent); } .pt.me { fill: var(--accent); }
+.ln.other { stroke: var(--purple); } .pt.other { fill: var(--purple); }
+.legend { display: flex; gap: 16px; margin: 6px 0; font-size: .8rem; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.legend i.me { background: var(--accent); } .legend i.other { background: var(--purple); }
+.compare-cards { display: flex; gap: 12px; margin-top: 12px; }
+.compare-cards .card { flex: 1; }
+.compare-cards .big { font-size: 1.2rem; font-weight: 700; }
+.big.me { color: var(--accent); } .big.other { color: var(--purple); }
+.table .tr > span:last-child { min-width: 64px; text-align: right; }
+.ln.p2 { stroke: #f59e0b; } .pt.p2 { fill: #f59e0b; } .legend i.p2 { background: #f59e0b; } .big.p2 { color: #f59e0b; }
+.ln.p3 { stroke: #38bdf8; } .pt.p3 { fill: #38bdf8; } .legend i.p3 { background: #38bdf8; } .big.p3 { color: #38bdf8; }
+.ln.p4 { stroke: #f472b6; } .pt.p4 { fill: #f472b6; } .legend i.p4 { background: #f472b6; } .big.p4 { color: #f472b6; }
+.ln.p5 { stroke: #a3e635; } .pt.p5 { fill: #a3e635; } .legend i.p5 { background: #a3e635; } .big.p5 { color: #a3e635; }
+.legend { flex-wrap: wrap; }
+.compare-cards { flex-wrap: wrap; }
+.compare-cards .card { min-width: 120px; }
+.podium { padding: 10px 12px; }
+.podium-head { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; margin-bottom: 6px; }
+.podium-head .icon { width: 32px; height: 32px; font-size: 1rem; }
+.podium-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; margin-top: 4px; font-size: .9rem; }
+.podium-row .medal { font-size: 1.1rem; }
+.podium-val { font-weight: 700; }
+.podium-row.gold { background: rgba(250, 204, 21, .12); } .podium-row.gold .podium-val { color: #facc15; }
+.podium-row.silver { background: rgba(203, 213, 225, .10); } .podium-row.silver .podium-val { color: #cbd5e1; }
+.podium-row.bronze { background: rgba(217, 119, 6, .12); } .podium-row.bronze .podium-val { color: #f59e0b; }
+.pb { display: block; color: inherit; text-decoration: none; padding: 10px 12px; }
+.pb:hover { border-color: var(--accent); }
+.pb-head { display: flex; align-items: center; gap: 12px; }
+.pb-head .icon { width: 40px; height: 40px; font-size: 1.2rem; }
+.pb-fav { color: #facc15; }
+.pb-val { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.pb-ranges { display: flex; gap: 4px; margin-top: 8px; }
+.pb-ranges span { flex: 1; text-align: center; background: var(--card2); border-radius: 6px; padding: 4px 0; font-size: .8rem; }
+.pb-ranges span b { display: block; font-size: .65rem; color: var(--muted); font-weight: 600; }
+.pb-ranges span.none { opacity: .4; }

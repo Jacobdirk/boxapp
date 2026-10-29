@@ -9,19 +9,19 @@
   <meta http-equiv="Expires" content="0" />
   <title>Box App</title>
   <!-- Cache buster: bump ?v= on every release -->
-  <link rel="stylesheet" href="css/styles.css?v=1.6.4" />
+  <link rel="stylesheet" href="css/styles.css?v=1.10.0" />
 </head>
 <body>
   <div class="app">
     <main id="view"></main>
     <nav class="tabbar">
       <a href="#/" data-tab="home"><span>🏠</span>Home</a>
-      <a class="disabled" title="Binnenkort"><span>📋</span>History</a>
-      <a class="disabled" title="Binnenkort"><span>📊</span>Comparisons</a>
+      <a href="#/history" data-tab="history"><span>📋</span>History</a>
+      <a href="#/comparisons" data-tab="comparisons"><span>📊</span>Ranking</a>
       <a href="#/profile" data-tab="profile"><span>👤</span>Profile</a>
     </nav>
   </div>
-  <script src="js/db.js?v=1.6.4"></script>
-  <script src="js/app.js?v=1.6.4"></script>
+  <script src="js/db.js?v=1.10.0"></script>
+  <script src="js/app.js?v=1.10.0"></script>
 </body>
 </html>
