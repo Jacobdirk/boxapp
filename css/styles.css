@@ -135,3 +135,15 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .pb-ranges span { flex: 1; text-align: center; background: var(--card2); border-radius: 6px; padding: 4px 0; font-size: .8rem; }
 .pb-ranges span b { display: block; font-size: .65rem; color: var(--muted); font-weight: 600; }
 .pb-ranges span.none { opacity: .4; }
+.suggest { margin-top: 16px; border-color: #3b3413; background: linear-gradient(135deg, rgba(250, 204, 21, .08), var(--card)); }
+.suggest-head { display: flex; gap: 10px; align-items: flex-start; }
+.suggest-icon { font-size: 1.3rem; }
+.chip-sub { font-size: .7rem; color: var(--muted); font-weight: 500; }
+.last-done { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+.last-done.due { color: #facc15; font-weight: 600; }
+.row.due { border-left: 3px solid #facc15; }
+.suggest { margin-top: 12px; }
+.suggest > summary { list-style: none; cursor: pointer; align-items: center; }
+.suggest > summary::-webkit-details-marker { display: none; }
+.suggest-chev { transition: transform .2s; }
+.suggest[open] .suggest-chev { transform: rotate(90deg); }

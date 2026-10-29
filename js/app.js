@@ -14,10 +14,64 @@
       <span class="chev">›</span>
     </a>`;
 
+  const dayKey = iso => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const daysAgo = iso => {
+    const a = new Date(iso), b = new Date();
+    a.setHours(0, 0, 0, 0); b.setHours(0, 0, 0, 0);
+    return Math.round((b - a) / 864e5);
+  };
+  const agoLabel = iso => {
+    if (!iso) return 'Nog nooit gedaan';
+    const n = daysAgo(iso);
+    return n === 0 ? 'Vandaag' : n === 1 ? 'Gisteren' : `${n} dagen geleden`;
+  };
+
+  // Suggest favorites that were skipped in the last session (or not done yet today)
+  async function trainingSuggestion(user, favorites) {
+    const logs = await repo.getAllLogs(user.id);
+    const lastDone = {};
+    logs.forEach(l => { if (!lastDone[l.exercise_id]) lastDone[l.exercise_id] = l.logged_at; });
+    if (!logs.length) return { lastDone, html: '' };
+
+    const today = dayKey(new Date().toISOString());
+    const lastDay = dayKey(logs[0].logged_at);
+    const trainedToday = lastDay === today;
+    const doneIds = new Set(logs.filter(l => dayKey(l.logged_at) === lastDay).map(l => l.exercise_id));
+    const todo = favorites
+      .filter(e => !doneIds.has(e.id))
+      .sort((a, b) => (lastDone[a.id] || '').localeCompare(lastDone[b.id] || ''));
+    const done = favorites.filter(e => doneIds.has(e.id));
+
+    const title = () => `Suggestie voor vandaag${todo.length ? ` · ${todo.length}` : ''}`;
+    const sub = trainedToday
+      ? `Nog ${todo.length} favoriet${todo.length === 1 ? '' : 'en'} te doen`
+      : `Laatste training: ${agoLabel(logs[0].logged_at).toLowerCase()} (${fmtShort(logs[0].logged_at)})`;
+
+    const html = `
+      <details class="card suggest">
+        <summary class="suggest-head"><span class="suggest-icon">💡</span><div class="grow"><div class="title">${title()}</div><div class="muted">${sub}</div></div><span class="chev suggest-chev">›</span></summary>
+        ${todo.length ? `<div class="chips" style="margin-top:10px">${todo.map(e => `
+          <a class="chip" href="#/exercise/${e.id}/log"><span class="chip-icon c-${e.color}">${e.icon}</span>${esc(e.name)}<span class="chip-sub">${lastDone[e.id] ? `${daysAgo(lastDone[e.id])}d` : 'nieuw'}</span></a>`).join('')}</div>`
+        : `<div class="muted" style="margin-top:8px">Alle favorieten gedaan 💪</div>`}
+      </details>`;
+    return { lastDone, doneIds, html };
+  }
+
   // ---------- Views ----------
   async function homeView() {
     const user = await repo.getCurrentUser();
     const main = await repo.getFavoriteExercises(user.id);
+    const { lastDone, doneIds, html: suggestion } = await trainingSuggestion(user, main);
+    const favRow = e => {
+      const skipped = doneIds && !doneIds.has(e.id);
+      return `
+      <a class="row ${skipped ? 'due' : ''}" href="#/exercise/${e.id}">
+        <div class="icon c-${e.color}">${e.icon}</div>
+        <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></div>
+        <span class="last-done ${skipped ? 'due' : ''}">${agoLabel(lastDone[e.id])}</span>
+        <span class="chev">›</span>
+      </a>`;
+    };
     view.innerHTML = `
       <div class="header">
         <div class="icon c-green">💪</div>
@@ -26,14 +80,15 @@
       </div>
       <h2>Mijn oefeningen</h2>
       <div class="muted">Jouw favoriete oefeningen · ${main.length}</div>
-      <div class="list">${main.length ? main.map(exerciseRow).join('') : `<div class="card empty">Nog geen favorieten. Markeer oefeningen met ☆.</div>`}</div>
+      <div class="list">${main.length ? main.map(favRow).join('') : `<div class="card empty">Nog geen favorieten. Markeer oefeningen met ☆.</div>`}</div>
       <div class="list">
         <a class="row" href="#/exercises">
           <div class="icon c-slate">🤸</div>
           <div class="grow"><div class="title">Alle oefeningen</div><div class="muted">Hoofd- en filler oefeningen, favorieten beheren</div></div>
           <span class="chev">›</span>
         </a>
-      </div>`;
+      </div>
+      ${main.length ? suggestion : ''}`;
   }
 
   async function exercisesView() {
