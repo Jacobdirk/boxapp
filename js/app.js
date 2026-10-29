@@ -806,28 +806,16 @@
     location.hash = '#/';
   }
 
-  // Keep the user inside the app. Browsers skip history entries pushed without a user gesture,
-  // so the back-button trap is (re)armed on every tap while the current entry isn't a trap.
-  const armTrap = () => { if (!(history.state && history.state.trap)) history.pushState({ trap: true }, '', location.href); };
-  document.addEventListener('pointerdown', armTrap, true);
-  document.addEventListener('keydown', armTrap, true);
-
-  // Android back gesture/button (Chrome 120+, incl. installed PWA): a CloseWatcher receives
-  // the back press before history does. Cancel it silently when allowed; otherwise re-create it.
-  if ('CloseWatcher' in window) {
-    const watch = () => {
-      try {
-        const w = new CloseWatcher();
-        w.oncancel = ev => { if (ev.cancelable) ev.preventDefault(); };
-        w.onclose = () => watch();
-      } catch { /* not allowed right now; re-armed on next tap */ }
-    };
-    watch();
-    document.addEventListener('pointerdown', () => { if (!navigator.userActivation || navigator.userActivation.isActive) watch(); }, { capture: true, once: true });
-  }
-  document.addEventListener('click', ev => {
-    const a = ev.target.closest('a[href]');
-    if (a && !a.hasAttribute('download') && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
+  // Prevent the app from closing on back at the home screen, while back still works between pages.
+  // Guard entries (state.guard) all point to home. Chrome may skip entries pushed without a user
+  // gesture, so an extra guard is also pushed on taps while on a guard entry.
+  const GUARD_ENTRIES = 10;
+  const startHash = location.hash && location.hash !== '#/' ? location.hash : null;
+  history.replaceState({ guard: true }, '', '#/');
+  for (let i = 0; i < GUARD_ENTRIES; i++) history.pushState({ guard: true }, '', '#/');
+  if (startHash) history.pushState(null, '', startHash);
+  document.addEventListener('pointerdown', () => {
+    if (history.state && history.state.guard) history.pushState({ guard: true }, '', '#/');
   }, true);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
