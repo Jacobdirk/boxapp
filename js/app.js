@@ -65,8 +65,9 @@
   const COLORS = ['green', 'blue', 'yellow', 'purple', 'orange', 'teal', 'slate'];
 
   async function exerciseFormView(id) {
-    const ex = id ? await repo.getExercise(id) : { name: '', muscles: '', icon: '🏋️', color: 'green', category: 'filler' };
+    const ex = id ? await repo.getExercise(id) : { name: '', muscles: '', icon: '🏋️', color: 'green', category: 'filler', variant_group: null };
     if (!ex) return location.hash = '#/exercises';
+    const groups = await repo.getVariantGroups();
     view.innerHTML = `
       <button class="back" onclick="history.back()">←</button>
       <h1>${id ? 'Oefening bewerken' : 'Nieuwe oefening'}</h1>
@@ -77,6 +78,8 @@
         <option value="main" ${ex.category === 'main' ? 'selected' : ''}>Hoofdoefening</option>
         <option value="filler" ${ex.category === 'filler' ? 'selected' : ''}>Overig / Filler</option>
       </select></div></div>
+      <div class="field"><label>Snel wisselen-groep (optioneel)</label><div class="stepper"><input id="e-group" list="e-groups" value="${esc(ex.variant_group || '')}" placeholder="bijv. row, deadlift" /></div>
+        <datalist id="e-groups">${groups.map(g => `<option value="${esc(g)}"></option>`).join('')}</datalist></div>
       <div class="field"><label>Kleur</label><div class="colors">
         ${COLORS.map(c => `<button class="swatch c-${c} ${c === ex.color ? 'on' : ''}" data-color="${c}"></button>`).join('')}
       </div></div>
@@ -95,6 +98,7 @@
         muscles: document.getElementById('e-muscles').value.trim(),
         icon: document.getElementById('e-icon').value.trim() || '🏋️',
         category: document.getElementById('e-category').value,
+        variant_group: document.getElementById('e-group').value.trim().toLowerCase().replace(/\s+/g, '_') || null,
         color
       };
       if (!data.name) return alert('Vul een naam in.');
@@ -134,6 +138,7 @@
     const logs = await repo.getLogs(user.id, id);
     const last = logs[0];
     const fav = await repo.isFavorite(user.id, id);
+    const variants = await repo.getVariants(id);
     range = range || (last ? repRange(last.reps) : 8);
     const counts = Object.fromEntries(REP_RANGES.map(r => [r, rangeLogs(logs, r).length]));
     const recent = rangeLogs(logs, range).slice(-6);
@@ -151,6 +156,8 @@
         <div class="muted">Laatste keer</div>
         ${last ? `<div class="big">${fmtSet(last)}</div><div class="muted">${fmtDate(last.logged_at)}</div>` : `<div class="muted">Nog niet gelogd</div>`}
       </div>
+      ${variants.length ? `<h3>Snel wisselen</h3><div class="chips">${variants.map(v => `
+        <a class="chip" href="#/exercise/${v.id}"><span class="chip-icon c-${v.color}">${v.icon}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
       <h3>Jouw progressie</h3>
       <div class="seg" role="tablist" aria-label="Rep range">${REP_RANGES.map(r => `<button data-range="${r}" class="${r === range ? 'on' : ''}" ${counts[r] ? '' : 'disabled'}>${r === 12 ? '12+' : r}</button>`).join('')}</div>
       ${recent.length ? `<div class="chart">${recent.map(l => `
@@ -244,6 +251,7 @@
       if (!confirm('Alle gebruikers, oefeningen en logs wissen en standaard oefeningen terugzetten?')) return;
       await repo.resetDatabase();
       location.hash = '#/';
+      router();
     });
     view.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', async () => {
       await repo.setCurrentUser(+b.dataset.id); profileView();
@@ -267,7 +275,34 @@
     [/^#\/profile$/, profileView, 'profile']
   ];
 
-  function router() {
+  function onboardingView() {
+    document.querySelector('.tabbar').hidden = true;
+    view.innerHTML = `
+      <div class="onboarding">
+        <h1>Welkom bij Box App</h1>
+        <div class="muted accent">Log. Compare. Get stronger.</div>
+        <form id="onboard">
+          <div class="field"><label for="o-name">Hoe heet je?</label>
+            <div class="stepper"><input id="o-name" autocomplete="given-name" maxlength="40" placeholder="Je naam" required /></div></div>
+          <button class="btn primary" type="submit">Profiel aanmaken</button>
+        </form>
+      </div>`;
+    const input = document.getElementById('o-name');
+    input.focus();
+    document.getElementById('onboard').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      const user = await repo.addUser(name);
+      await repo.setCurrentUser(user.id);
+      document.querySelector('.tabbar').hidden = false;
+      location.hash = '#/';
+      router();
+    });
+  }
+
+  async function router() {
+    if (!(await repo.getCurrentUser())) return onboardingView();
     const hash = location.hash || '#/';
     for (const [re, fn, tab] of routes) {
       const m = hash.match(re);

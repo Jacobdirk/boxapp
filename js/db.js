@@ -4,7 +4,8 @@
  * numeric ids and foreign keys, so it maps 1:1 onto a future SQL schema:
  *
  *   users     (id PK, name, initials, created_at)
- *   exercises (id PK, name, muscles, icon, color, category)   category: 'main' | 'filler'
+ *   exercises (id PK, name, muscles, icon, color, category, variant_group NULL)
+ *              category: 'main' | 'filler'; variant_group: e.g. 'row' (quick swap)
  *   logs      (id PK, user_id FK->users, exercise_id FK->exercises ON DELETE CASCADE,
  *              weight REAL, reps INT, sets INT NULL, logged_at TEXT ISO-8601)
  *   favorites (user_id FK->users, exercise_id FK->exercises ON DELETE CASCADE,
@@ -15,33 +16,58 @@
  */
 (function () {
   const STORAGE_KEY = 'boxapp.db.v1';
-  const DB_VERSION = 2;
+  const DB_VERSION = 5;
 
   // Initial feed: base exercises. Used by seedDatabase() (and later as SQL seed script).
+  // Ids are stable; removed ids (8, 11, 12) are not reused.
   const SEED_EXERCISES = [
-      { id: 1, name: 'Weighted Pull Ups', muscles: 'Rug / Biceps', icon: '🏋️', color: 'green', category: 'main' },
+      { id: 1, name: 'Pull Ups', muscles: 'Rug / Biceps', icon: '🏋️', color: 'green', category: 'main' },
       { id: 2, name: 'Cable Row', muscles: 'Rug', icon: '🚣', color: 'blue', category: 'main' },
       { id: 3, name: 'Hex Bar Deadlift', muscles: 'Benen / Billen', icon: '🏋️‍♂️', color: 'yellow', category: 'main' },
       { id: 4, name: 'Bench Press', muscles: 'Borst', icon: '🛏️', color: 'purple', category: 'main' },
       { id: 5, name: 'Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'orange', category: 'main' },
       { id: 6, name: 'Cable Fly', muscles: 'Borst', icon: '🦅', color: 'teal', category: 'main' },
+      { id: 13, name: 'Squat', muscles: 'Benen / Billen', icon: '🦵', color: 'green', category: 'main' },
       { id: 7, name: 'Biceps Curl', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
-      { id: 8, name: 'Triceps Extension', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
+      { id: 14, name: 'Tricep Pulley', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
       { id: 9, name: 'Shrugs', muscles: 'Schouders', icon: '🤷', color: 'slate', category: 'filler' },
       { id: 10, name: 'Lat Raises', muscles: 'Schouders', icon: '🙆', color: 'slate', category: 'filler' },
-      { id: 11, name: 'Leg Extension', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' },
-      { id: 12, name: 'Leg Curl', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' }
-  ];
-  const SEED_FAVORITE_IDS = [1, 2, 3, 4, 5, 6];
+      { id: 15, name: 'Leg Press', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' },
+      { id: 16, name: 'Hamstring Curl', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' },
+      { id: 17, name: 'Calf Raise', muscles: 'Kuiten', icon: '🦶', color: 'slate', category: 'filler' },
+      { id: 18, name: 'Dumbbell Row', muscles: 'Rug', icon: '🚣', color: 'slate', category: 'filler' },
+      { id: 19, name: 'Barbell Row', muscles: 'Rug', icon: '🚣', color: 'slate', category: 'filler' },
+      { id: 20, name: 'Dumbbell Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'slate', category: 'filler' },
+      { id: 21, name: 'Machine Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'slate', category: 'filler' },
+      { id: 22, name: 'Romanian Deadlift', muscles: 'Hamstrings / Billen', icon: '🏋️', color: 'slate', category: 'filler' },
+      { id: 23, name: 'Deadlift', muscles: 'Rug / Benen', icon: '🏋️', color: 'slate', category: 'filler' },
+      { id: 24, name: 'Push Ups', muscles: 'Borst / Armen', icon: '🤸', color: 'slate', category: 'filler' },
+      { id: 25, name: 'Lat Pulley', muscles: 'Rug / Biceps', icon: '🏋️', color: 'slate', category: 'filler' }
+  ].map(e => ({ ...e, variant_group: null }));
+  // Quick swap groups (exercises.variant_group)
+  const SEED_VARIANT_GROUPS = {
+    row: ['Cable Row', 'Dumbbell Row', 'Barbell Row'],
+    deadlift: ['Hex Bar Deadlift', 'Deadlift', 'Romanian Deadlift'],
+    shoulder_press: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Machine Shoulder Press'],
+    squat: ['Squat', 'Leg Press'],
+    pull_up: ['Pull Ups', 'Lat Pulley']
+  };
+  const applyVariantGroups = exercises => {
+    for (const [group, names] of Object.entries(SEED_VARIANT_GROUPS)) {
+      exercises.filter(e => names.includes(e.name) && !e.variant_group).forEach(e => { e.variant_group = group; });
+    }
+    return exercises;
+  };
+  applyVariantGroups(SEED_EXERCISES);
+  const REMOVED_SEED_NAMES = ['Triceps Extension', 'Leg Extension', 'Leg Curl'];
 
   function seedDatabase() {
-    const now = new Date().toISOString();
     return {
-      meta: { version: DB_VERSION, seq: { users: 1, exercises: SEED_EXERCISES.length, logs: 0 }, currentUserId: 1 },
-      users: [{ id: 1, name: 'JD', initials: 'JD', created_at: now }],
+      meta: { version: DB_VERSION, seq: { users: 0, exercises: Math.max(...SEED_EXERCISES.map(e => e.id)), logs: 0 }, currentUserId: null },
+      users: [],
       exercises: structuredClone(SEED_EXERCISES),
       logs: [],
-      favorites: SEED_FAVORITE_IDS.map(exercise_id => ({ user_id: 1, exercise_id, created_at: now }))
+      favorites: []
     };
   }
 
@@ -53,6 +79,45 @@
         .filter(e => e.category === 'main')
         .map(e => ({ user_id: u.id, exercise_id: e.id, created_at: now })));
       db.meta.version = 2;
+    }
+    if (db.meta.version < 3) {
+      const now = new Date().toISOString();
+      // Remove dropped defaults, but keep them if the user already logged them
+      const logged = new Set(db.logs.map(l => l.exercise_id));
+      const drop = new Set(db.exercises.filter(e => REMOVED_SEED_NAMES.includes(e.name) && !logged.has(e.id)).map(e => e.id));
+      db.exercises = db.exercises.filter(e => !drop.has(e.id));
+      db.favorites = db.favorites.filter(f => !drop.has(f.exercise_id));
+      // Add new defaults that don't exist yet (matched by name), with fresh ids
+      const names = new Set(db.exercises.map(e => e.name.toLowerCase()));
+      for (const seed of SEED_EXERCISES) {
+        if (names.has(seed.name.toLowerCase()) || ['Push Ups', 'Lat Pulley', 'Pull Ups'].includes(seed.name)) continue;
+        const ex = { ...seed, id: ++db.meta.seq.exercises };
+        db.exercises.push(ex);
+        if (seed.name === 'Squat') {
+          db.users.forEach(u => db.favorites.push({ user_id: u.id, exercise_id: ex.id, created_at: now }));
+        }
+      }
+      db.meta.version = 3;
+    }
+    if (db.meta.version < 4) {
+      db.exercises.forEach(e => { if (e.variant_group === undefined) e.variant_group = null; });
+      if (!db.exercises.some(e => e.name.toLowerCase() === 'push ups')) {
+        const seed = SEED_EXERCISES.find(e => e.name === 'Push Ups');
+        db.exercises.push({ ...seed, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 4;
+    }
+    if (db.meta.version < 5) {
+      const has = name => db.exercises.some(e => e.name.toLowerCase() === name.toLowerCase());
+      const weighted = db.exercises.find(e => e.name === 'Weighted Pull Ups');
+      if (weighted && !has('Pull Ups')) weighted.name = 'Pull Ups';
+      if (!has('Lat Pulley')) {
+        const seed = SEED_EXERCISES.find(e => e.name === 'Lat Pulley');
+        db.exercises.push({ ...seed, variant_group: null, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 5;
     }
     return db;
   }
@@ -71,7 +136,7 @@
 
     // Users
     async getUsers() { return [...this.db.users]; }
-    async getCurrentUser() { return this.db.users.find(u => u.id === this.db.meta.currentUserId) || this.db.users[0]; }
+    async getCurrentUser() { return this.db.users.find(u => u.id === this.db.meta.currentUserId) || this.db.users[0] || null; }
     async setCurrentUser(id) { this.db.meta.currentUserId = id; this._save(); }
     async addUser(name) {
       const user = {
@@ -81,6 +146,9 @@
         created_at: new Date().toISOString()
       };
       this.db.users.push(user);
+      // Default favorites: all main exercises
+      this.db.exercises.filter(e => e.category === 'main')
+        .forEach(e => this.db.favorites.push({ user_id: user.id, exercise_id: e.id, created_at: user.created_at }));
       this._save();
       return user;
     }
@@ -90,16 +158,24 @@
       return this.db.exercises.filter(e => !category || e.category === category);
     }
     async getExercise(id) { return this.db.exercises.find(e => e.id === id); }
-    async addExercise({ name, muscles = '', icon = '🏋️', color = 'slate', category = 'filler' }) {
-      const ex = { id: this._nextId('exercises'), name, muscles, icon, color, category };
+    async getVariants(id) {
+      const ex = this.db.exercises.find(e => e.id === id);
+      if (!ex || !ex.variant_group) return [];
+      return this.db.exercises.filter(e => e.variant_group === ex.variant_group && e.id !== id);
+    }
+    async getVariantGroups() {
+      return [...new Set(this.db.exercises.map(e => e.variant_group).filter(Boolean))].sort();
+    }
+    async addExercise({ name, muscles = '', icon = '🏋️', color = 'slate', category = 'filler', variant_group = null }) {
+      const ex = { id: this._nextId('exercises'), name, muscles, icon, color, category, variant_group };
       this.db.exercises.push(ex);
       this._save();
       return ex;
     }
-    async updateExercise(id, { name, muscles, icon, color, category }) {
+    async updateExercise(id, { name, muscles, icon, color, category, variant_group = null }) {
       const ex = this.db.exercises.find(e => e.id === id);
       if (!ex) return null;
-      Object.assign(ex, { name, muscles, icon, color, category });
+      Object.assign(ex, { name, muscles, icon, color, category, variant_group });
       this._save();
       return ex;
     }
