@@ -711,6 +711,16 @@
     location.hash = '#/';
   }
 
+  // Keep the user inside the app. Browsers skip history entries pushed without a user gesture,
+  // so the back-button trap is (re)armed on every tap while the current entry isn't a trap.
+  const armTrap = () => { if (!(history.state && history.state.trap)) history.pushState({ trap: true }, '', location.href); };
+  document.addEventListener('pointerdown', armTrap, true);
+  document.addEventListener('keydown', armTrap, true);
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('a[href]');
+    if (a && (a.origin !== location.origin || a.target === '_blank')) ev.preventDefault();
+  }, true);
+
   window.addEventListener('hashchange', router);
   router();
 })();
