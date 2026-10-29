@@ -16,7 +16,7 @@
  */
 (function () {
   const STORAGE_KEY = 'boxapp.db.v1';
-  const DB_VERSION = 5;
+  const DB_VERSION = 6;
 
   // Initial feed: base exercises. Used by seedDatabase() (and later as SQL seed script).
   // Ids are stable; removed ids (8, 11, 12) are not reused.
@@ -26,7 +26,7 @@
       { id: 3, name: 'Hex Bar Deadlift', muscles: 'Benen / Billen', icon: '🏋️‍♂️', color: 'yellow', category: 'main' },
       { id: 4, name: 'Bench Press', muscles: 'Borst', icon: '🛏️', color: 'purple', category: 'main' },
       { id: 5, name: 'Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'orange', category: 'main' },
-      { id: 6, name: 'Cable Fly', muscles: 'Borst', icon: '🦅', color: 'teal', category: 'main' },
+      { id: 6, name: 'Cable Fly', muscles: 'Borst', icon: '🦅', color: 'slate', category: 'filler' },
       { id: 13, name: 'Squat', muscles: 'Benen / Billen', icon: '🦵', color: 'green', category: 'main' },
       { id: 7, name: 'Biceps Curl', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
       { id: 14, name: 'Tricep Pulley', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
@@ -118,6 +118,11 @@
       }
       applyVariantGroups(db.exercises);
       db.meta.version = 5;
+    }
+    if (db.meta.version < 6) {
+      db.exercises.filter(e => e.name === 'Cable Fly').forEach(e => { e.category = 'filler'; e.color = 'slate'; });
+      db.exercises.filter(e => e.name === 'Squat').forEach(e => { e.category = 'main'; });
+      db.meta.version = 6;
     }
     return db;
   }
