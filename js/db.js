@@ -16,33 +16,35 @@
  */
 (function () {
   const STORAGE_KEY = 'boxapp.db.v1';
-  const DB_VERSION = 6;
+  const DB_VERSION = 7;
 
   // Initial feed: base exercises. Used by seedDatabase() (and later as SQL seed script).
   // Ids are stable; removed ids (8, 11, 12) are not reused.
   const SEED_EXERCISES = [
-      { id: 1, name: 'Pull Ups', muscles: 'Rug / Biceps', icon: '🏋️', color: 'green', category: 'main' },
-      { id: 2, name: 'Cable Row', muscles: 'Rug', icon: '🚣', color: 'blue', category: 'main' },
-      { id: 3, name: 'Hex Bar Deadlift', muscles: 'Benen / Billen', icon: '🏋️‍♂️', color: 'yellow', category: 'main' },
-      { id: 4, name: 'Bench Press', muscles: 'Borst', icon: '🛏️', color: 'purple', category: 'main' },
-      { id: 5, name: 'Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'orange', category: 'main' },
-      { id: 6, name: 'Cable Fly', muscles: 'Borst', icon: '🦅', color: 'slate', category: 'filler' },
-      { id: 13, name: 'Squat', muscles: 'Benen / Billen', icon: '🦵', color: 'green', category: 'main' },
-      { id: 7, name: 'Biceps Curl', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
-      { id: 14, name: 'Tricep Pulley', muscles: 'Armen', icon: '💪', color: 'slate', category: 'filler' },
-      { id: 9, name: 'Shrugs', muscles: 'Schouders', icon: '🤷', color: 'slate', category: 'filler' },
-      { id: 10, name: 'Lat Raises', muscles: 'Schouders', icon: '🙆', color: 'slate', category: 'filler' },
-      { id: 15, name: 'Leg Press', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' },
-      { id: 16, name: 'Hamstring Curl', muscles: 'Benen', icon: '🦵', color: 'slate', category: 'filler' },
-      { id: 17, name: 'Calf Raise', muscles: 'Kuiten', icon: '🦶', color: 'slate', category: 'filler' },
-      { id: 18, name: 'Dumbbell Row', muscles: 'Rug', icon: '🚣', color: 'slate', category: 'filler' },
-      { id: 19, name: 'Barbell Row', muscles: 'Rug', icon: '🚣', color: 'slate', category: 'filler' },
-      { id: 20, name: 'Dumbbell Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'slate', category: 'filler' },
-      { id: 21, name: 'Machine Shoulder Press', muscles: 'Schouders', icon: '🙌', color: 'slate', category: 'filler' },
-      { id: 22, name: 'Romanian Deadlift', muscles: 'Hamstrings / Billen', icon: '🏋️', color: 'slate', category: 'filler' },
-      { id: 23, name: 'Deadlift', muscles: 'Rug / Benen', icon: '🏋️', color: 'slate', category: 'filler' },
-      { id: 24, name: 'Push Ups', muscles: 'Borst / Armen', icon: '🤸', color: 'slate', category: 'filler' },
-      { id: 25, name: 'Lat Pulley', muscles: 'Rug / Biceps', icon: '🏋️', color: 'slate', category: 'filler' }
+      { id: 1, name: 'Pull Ups', muscles: 'Rug / Biceps', icon: 'svg:pullup', color: 'green', category: 'main' },
+      { id: 2, name: 'Cable Row', muscles: 'Rug', icon: 'svg:cablerow', color: 'blue', category: 'main' },
+      { id: 3, name: 'Hex Bar Deadlift', muscles: 'Benen / Billen', icon: 'svg:hexdeadlift', color: 'yellow', category: 'main' },
+      { id: 4, name: 'Bench Press', muscles: 'Borst', icon: 'svg:bench', color: 'purple', category: 'main' },
+      { id: 5, name: 'Shoulder Press', muscles: 'Schouders', icon: 'svg:shoulderpress', color: 'orange', category: 'main' },
+      { id: 6, name: 'Cable Fly', muscles: 'Borst', icon: 'svg:cablefly', color: 'slate', category: 'filler' },
+      { id: 13, name: 'Squat', muscles: 'Benen / Billen', icon: 'svg:squat', color: 'green', category: 'main' },
+      { id: 7, name: 'Biceps Curl', muscles: 'Armen', icon: 'svg:curl', color: 'slate', category: 'filler' },
+      { id: 14, name: 'Tricep Pulley', muscles: 'Armen', icon: 'svg:triceppulley', color: 'slate', category: 'filler' },
+      { id: 9, name: 'Shrugs', muscles: 'Schouders', icon: 'svg:shrugs', color: 'slate', category: 'filler' },
+      { id: 10, name: 'Lat Raises', muscles: 'Schouders', icon: 'svg:latraise', color: 'slate', category: 'filler' },
+      { id: 15, name: 'Leg Press', muscles: 'Benen', icon: 'svg:legpress', color: 'slate', category: 'filler' },
+      { id: 16, name: 'Hamstring Curl', muscles: 'Benen', icon: 'svg:hamcurl', color: 'slate', category: 'filler' },
+      { id: 17, name: 'Calf Raise', muscles: 'Kuiten', icon: 'svg:calfraise', color: 'slate', category: 'filler' },
+      { id: 18, name: 'Dumbbell Row', muscles: 'Rug', icon: 'svg:dbrow', color: 'slate', category: 'filler' },
+      { id: 19, name: 'Barbell Row', muscles: 'Rug', icon: 'svg:barbellrow', color: 'slate', category: 'filler' },
+      { id: 20, name: 'Dumbbell Shoulder Press', muscles: 'Schouders', icon: 'svg:dbshoulderpress', color: 'slate', category: 'filler' },
+      { id: 21, name: 'Machine Shoulder Press', muscles: 'Schouders', icon: 'svg:machinepress', color: 'slate', category: 'filler' },
+      { id: 22, name: 'Romanian Deadlift', muscles: 'Hamstrings / Billen', icon: 'svg:rdl', color: 'slate', category: 'filler' },
+      { id: 23, name: 'Deadlift', muscles: 'Rug / Benen', icon: 'svg:deadlift', color: 'slate', category: 'filler' },
+      { id: 24, name: 'Push Ups', muscles: 'Borst / Armen', icon: 'svg:pushup', color: 'slate', category: 'filler' },
+      { id: 25, name: 'Lat Pulley', muscles: 'Rug / Biceps', icon: 'svg:latpulley', color: 'slate', category: 'filler' },
+      { id: 26, name: 'Dips', muscles: 'Borst / Triceps', icon: 'svg:dips', color: 'slate', category: 'filler' },
+      { id: 27, name: 'Chin Ups', muscles: 'Rug / Biceps', icon: 'svg:chinup', color: 'slate', category: 'filler' }
   ].map(e => ({ ...e, variant_group: null }));
   // Quick swap groups (exercises.variant_group)
   const SEED_VARIANT_GROUPS = {
@@ -50,7 +52,7 @@
     deadlift: ['Hex Bar Deadlift', 'Deadlift', 'Romanian Deadlift'],
     shoulder_press: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Machine Shoulder Press'],
     squat: ['Squat', 'Leg Press'],
-    pull_up: ['Pull Ups', 'Lat Pulley']
+    pull_up: ['Pull Ups', 'Chin Ups', 'Lat Pulley']
   };
   const applyVariantGroups = exercises => {
     for (const [group, names] of Object.entries(SEED_VARIANT_GROUPS)) {
@@ -88,7 +90,7 @@
       db.exercises = db.exercises.filter(e => !drop.has(e.id));
       db.favorites = db.favorites.filter(f => !drop.has(f.exercise_id));
       // Add new defaults that don't exist yet (matched by name), with fresh ids
-      const names = new Set(db.exercises.map(e => e.name.toLowerCase()));
+      const names = new Set(db.exercises.map(e => (e.name || '').toLowerCase()));
       for (const seed of SEED_EXERCISES) {
         if (names.has(seed.name.toLowerCase()) || ['Push Ups', 'Lat Pulley', 'Pull Ups'].includes(seed.name)) continue;
         const ex = { ...seed, id: ++db.meta.seq.exercises };
@@ -101,7 +103,7 @@
     }
     if (db.meta.version < 4) {
       db.exercises.forEach(e => { if (e.variant_group === undefined) e.variant_group = null; });
-      if (!db.exercises.some(e => e.name.toLowerCase() === 'push ups')) {
+      if (!db.exercises.some(e => (e.name || '').toLowerCase() === 'push ups')) {
         const seed = SEED_EXERCISES.find(e => e.name === 'Push Ups');
         db.exercises.push({ ...seed, id: ++db.meta.seq.exercises });
       }
@@ -109,7 +111,7 @@
       db.meta.version = 4;
     }
     if (db.meta.version < 5) {
-      const has = name => db.exercises.some(e => e.name.toLowerCase() === name.toLowerCase());
+      const has = name => db.exercises.some(e => (e.name || '').toLowerCase() === name.toLowerCase());
       const weighted = db.exercises.find(e => e.name === 'Weighted Pull Ups');
       if (weighted && !has('Pull Ups')) weighted.name = 'Pull Ups';
       if (!has('Lat Pulley')) {
@@ -123,6 +125,21 @@
       db.exercises.filter(e => e.name === 'Cable Fly').forEach(e => { e.category = 'filler'; e.color = 'slate'; });
       db.exercises.filter(e => e.name === 'Squat').forEach(e => { e.category = 'main'; });
       db.meta.version = 6;
+    }
+    if (db.meta.version < 7) {
+      // Custom SVG icons for default exercises (keep icons the user changed), add Dips and Chin Ups
+      const OLD_DEFAULT_ICONS = ['🏋️', '🚣', '🏋️‍♂️', '🛏️', '🙌', '🦅', '🦵', '💪', '🤷', '🙆', '🦶', '🤸'];
+      for (const seed of SEED_EXERCISES) {
+        const ex = db.exercises.find(e => (e.name || '').toLowerCase() === seed.name.toLowerCase());
+        if (ex && OLD_DEFAULT_ICONS.includes(ex.icon)) ex.icon = seed.icon;
+      }
+      for (const name of ['Dips', 'Chin Ups']) {
+        if (db.exercises.some(e => (e.name || '').toLowerCase() === name.toLowerCase())) continue;
+        const seed = SEED_EXERCISES.find(e => e.name === name);
+        db.exercises.push({ ...seed, variant_group: null, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 7;
     }
     return db;
   }

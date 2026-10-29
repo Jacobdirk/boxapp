@@ -185,3 +185,8 @@ label.btn { cursor: pointer; }
 .danger-zone > summary { list-style: none; }
 .danger-zone > summary::-webkit-details-marker { display: none; }
 .danger-zone > summary { text-align: center; }
+.ex-svg { width: 70%; height: 70%; color: #fff; display: block; }
+.chip-icon .ex-svg { width: 78%; height: 78%; }
+.icon-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.icon-picker .icon { border: 2px solid transparent; cursor: pointer; padding: 0; }
+.icon-picker .icon.picked { border-color: var(--accent); }

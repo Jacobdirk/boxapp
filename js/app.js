@@ -9,7 +9,7 @@
 
   const exerciseRow = e => `
     <a class="row" href="#/exercise/${e.id}">
-      <div class="icon c-${e.color}">${e.icon}</div>
+      <div class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</div>
       <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></div>
       <span class="chev">›</span>
     </a>`;
@@ -51,7 +51,7 @@
       <details class="card suggest">
         <summary class="suggest-head"><span class="suggest-icon">💡</span><div class="grow"><div class="title">${title()}</div><div class="muted">${sub}</div></div><span class="chev suggest-chev">›</span></summary>
         ${todo.length ? `<div class="chips" style="margin-top:10px">${todo.map(e => `
-          <a class="chip" href="#/exercise/${e.id}/log"><span class="chip-icon c-${e.color}">${e.icon}</span>${esc(e.name)}<span class="chip-sub">${lastDone[e.id] ? `${daysAgo(lastDone[e.id])}d` : 'nieuw'}</span></a>`).join('')}</div>`
+          <a class="chip" href="#/exercise/${e.id}/log"><span class="chip-icon c-${e.color}">${renderExerciseIcon(e.icon)}</span>${esc(e.name)}<span class="chip-sub">${lastDone[e.id] ? `${daysAgo(lastDone[e.id])}d` : 'nieuw'}</span></a>`).join('')}</div>`
         : `<div class="muted" style="margin-top:8px">Alle favorieten gedaan 💪</div>`}
       </details>`;
     return { lastDone, doneIds, html };
@@ -66,7 +66,7 @@
       const skipped = doneIds && !doneIds.has(e.id);
       return `
       <a class="row ${skipped ? 'due' : ''}" href="#/exercise/${e.id}">
-        <div class="icon c-${e.color}">${e.icon}</div>
+        <div class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</div>
         <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></div>
         <span class="last-done ${skipped ? 'due' : ''}">${agoLabel(lastDone[e.id])}</span>
         <span class="chev">›</span>
@@ -99,7 +99,7 @@
     (await repo.getAllLogs(user.id)).forEach(l => { if (!lastUsed[l.exercise_id] || l.logged_at > lastUsed[l.exercise_id]) lastUsed[l.exercise_id] = l.logged_at; });
     const row = e => `
       <div class="row" data-search="${esc((e.name + ' ' + e.muscles).toLowerCase())}">
-        <a class="icon c-${e.color}" href="#/exercise/${e.id}" style="text-decoration:none">${e.icon}</a>
+        <a class="icon c-${e.color}" href="#/exercise/${e.id}" style="text-decoration:none">${renderExerciseIcon(e.icon)}</a>
         <a class="grow" href="#/exercise/${e.id}" style="color:inherit;text-decoration:none"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}${e.category !== 'main' && lastUsed[e.id] ? ` · ${agoLabel(lastUsed[e.id]).toLowerCase()}` : ''}</div></a>
         <button class="star ${favs.has(e.id) ? 'on' : ''}" data-fav="${e.id}" title="Favoriet">${favs.has(e.id) ? '★' : '☆'}</button>
       </div>`;
@@ -148,7 +148,7 @@
       const list = q ? all.filter(e => (e.name + ' ' + e.muscles).toLowerCase().includes(q)) : all;
       results.innerHTML = list.length ? list.slice(0, 30).map(e => `
         <a class="row" href="#/exercise/${e.id}">
-          <div class="icon c-${e.color}">${e.icon}</div>
+          <div class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</div>
           <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${esc(e.muscles)}</div></div>
           <span class="chev">›</span>
         </a>`).join('') : `<div class="card empty">Geen oefeningen gevonden.</div>`;
@@ -168,7 +168,7 @@
   const COLORS = ['green', 'blue', 'yellow', 'purple', 'orange', 'teal', 'slate'];
 
   async function exerciseFormView(id) {
-    const ex = id ? await repo.getExercise(id) : { name: '', muscles: '', icon: '🏋️', color: 'green', category: 'filler', variant_group: null };
+    const ex = id ? await repo.getExercise(id) : { name: '', muscles: '', icon: 'svg:generic', color: 'green', category: 'filler', variant_group: null };
     if (!ex) return location.hash = '#/exercises';
     const groups = await repo.getVariantGroups();
     view.innerHTML = `
@@ -176,7 +176,9 @@
       <h1>${id ? 'Oefening bewerken' : 'Nieuwe oefening'}</h1>
       <div class="field"><label>Naam</label><div class="stepper"><input id="e-name" value="${esc(ex.name)}" /></div></div>
       <div class="field"><label>Spiergroepen</label><div class="stepper"><input id="e-muscles" value="${esc(ex.muscles)}" placeholder="bijv. Rug / Biceps" /></div></div>
-      <div class="field"><label>Icoon (emoji)</label><div class="stepper"><input id="e-icon" value="${esc(ex.icon)}" maxlength="8" /></div></div>
+      <div class="field"><label>Icoon (kies of typ een emoji)</label>
+        <div class="icon-picker">${Object.keys(EXERCISE_ICONS).map(k => `<button type="button" class="icon c-${ex.color} ${ex.icon === 'svg:' + k ? 'picked' : ''}" data-icon="svg:${k}" title="${k}">${renderExerciseIcon('svg:' + k)}</button>`).join('')}</div>
+        <div class="stepper"><input id="e-icon" value="${esc(ex.icon)}" maxlength="24" /></div></div>
       <div class="field"><label>Categorie</label><div class="stepper"><select id="e-category">
         <option value="main" ${ex.category === 'main' ? 'selected' : ''}>Hoofdoefening</option>
         <option value="filler" ${ex.category === 'filler' ? 'selected' : ''}>Overig / Filler</option>
@@ -191,7 +193,12 @@
       <button class="btn" onclick="history.back()">Annuleren</button>`;
 
     let color = ex.color;
+    const iconInput = document.getElementById('e-icon');
+    const syncPicked = () => view.querySelectorAll('[data-icon]').forEach(x => x.classList.toggle('picked', x.dataset.icon === iconInput.value.trim()));
+    view.querySelectorAll('[data-icon]').forEach(b => b.addEventListener('click', () => { iconInput.value = b.dataset.icon; syncPicked(); }));
+    iconInput.addEventListener('input', syncPicked);
     view.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => {
+      view.querySelectorAll('[data-icon]').forEach(x => x.classList.replace(`c-${color}`, `c-${b.dataset.color}`));
       color = b.dataset.color;
       view.querySelectorAll('[data-color]').forEach(x => x.classList.toggle('on', x === b));
     }));
@@ -199,7 +206,7 @@
       const data = {
         name: document.getElementById('e-name').value.trim(),
         muscles: document.getElementById('e-muscles').value.trim(),
-        icon: document.getElementById('e-icon').value.trim() || '🏋️',
+        icon: document.getElementById('e-icon').value.trim() || 'svg:generic',
         category: document.getElementById('e-category').value,
         variant_group: document.getElementById('e-group').value.trim().toLowerCase().replace(/\s+/g, '_') || null,
         color
@@ -250,7 +257,7 @@
     view.innerHTML = `
       <button class="back" onclick="location.hash='#/'">←</button>
       <div class="header">
-        <div class="icon lg c-${ex.color}">${ex.icon}</div>
+        <div class="icon lg c-${ex.color}">${renderExerciseIcon(ex.icon)}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
         <button class="star ${fav ? 'on' : ''}" id="fav" title="Favoriet">${fav ? '★' : '☆'}</button>
         <a class="star" href="#/exercise/${id}/edit" title="Bewerken">✎</a>
@@ -263,7 +270,7 @@
         <a class="btn primary log-btn" href="#/exercise/${id}/log">＋ Log deze oefening</a>
       </div>
       ${variants.length ? `<h3>Snel wisselen</h3><div class="chips">${variants.map(v => `
-        <a class="chip" href="#/exercise/${v.id}"><span class="chip-icon c-${v.color}">${v.icon}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
+        <a class="chip" href="#/exercise/${v.id}"><span class="chip-icon c-${v.color}">${renderExerciseIcon(v.icon)}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
       <h3>Jouw progressie</h3>
       <div class="seg" role="tablist" aria-label="Rep range">${REP_RANGES.map(r => `<button data-range="${r}" class="${r === range ? 'on' : ''}" ${counts[r] ? '' : 'disabled'}>${r === 12 ? '12+' : r}</button>`).join('')}</div>
       ${recent.length ? `<div class="chart">${recent.map(l => `
@@ -300,7 +307,7 @@
     view.innerHTML = `
       <button class="back" onclick="history.back()">←</button>
       <div class="header">
-        <div class="icon lg c-${ex.color}">${ex.icon}</div>
+        <div class="icon lg c-${ex.color}">${renderExerciseIcon(ex.icon)}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
       </div>
       <div class="last-row">
@@ -487,7 +494,7 @@
       const e = byId[l.exercise_id];
       return `
       <div class="row">
-        <a class="icon c-${e.color}" href="#/exercise/${e.id}" style="text-decoration:none">${e.icon}</a>
+        <a class="icon c-${e.color}" href="#/exercise/${e.id}" style="text-decoration:none">${renderExerciseIcon(e.icon)}</a>
         <a class="grow" href="#/exercise/${e.id}" style="color:inherit;text-decoration:none"><div class="title">${esc(e.name)}</div><div class="muted accent">${fmtSet(l)}</div></a>
         <span class="muted">${fmtShort(l.logged_at)}</span>
         <button class="star" data-del="${l.id}" title="Verwijderen">✕</button>
@@ -502,7 +509,7 @@
         .sort((a, b) => b.items[0].logged_at.localeCompare(a.items[0].logged_at));
       body = groups.length ? `<div class="list">${groups.map(({ e, items }) => `
         <a class="row" href="#/exercise/${e.id}">
-          <div class="icon c-${e.color}">${e.icon}</div>
+          <div class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</div>
           <div class="grow"><div class="title">${esc(e.name)}</div><div class="muted">${items.length} ${items.length === 1 ? 'sessie' : 'sessies'} · laatst ${fmtSet(items[0])}</div></div>
           <span class="muted">${fmtShort(items[0].logged_at)}</span>
         </a>`).join('')}</div>` : '';
@@ -599,7 +606,7 @@
       <h3>Top 3 · 1 rep max</h3>
       ${withData.length ? `<div class="list">${withData.map(({ e, top3 }) => `
         <div class="card podium">
-          <a class="podium-head" href="#/exercise/${e.id}"><span class="icon c-${e.color}">${e.icon}</span><span class="title">${esc(e.name)}</span></a>
+          <a class="podium-head" href="#/exercise/${e.id}"><span class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</span><span class="title">${esc(e.name)}</span></a>
           ${top3.map(({ u, top }, i) => `
           <div class="podium-row ${MEDALS[i].cls}">
             <span class="medal">${MEDALS[i].icon}</span>
@@ -627,7 +634,7 @@
     const row = ({ e, fav, top, perRange }) => `
       <a class="card pb" href="#/exercise/${e.id}">
         <div class="pb-head">
-          <span class="icon c-${e.color}">${e.icon}</span>
+          <span class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</span>
           <span class="grow"><span class="title">${esc(e.name)}</span>${fav ? ' <span class="pb-fav">★</span>' : ''}<br><span class="muted">${top ? fmtDate(top.logged_at) : 'Nog niet gelogd'}</span></span>
           <span class="pb-val">${top ? `${top.weight} kg <span class="muted">× ${top.reps}</span>` : '–'}</span>
         </div>
