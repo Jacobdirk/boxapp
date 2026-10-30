@@ -57,6 +57,40 @@
     return { lastDone, doneIds, html };
   }
 
+  async function downloadBackup() {
+    const dump = await repo.exportDatabase();
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const name = `boxapp-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
+    const json = JSON.stringify(dump, null, 2);
+    const file = new File([json], name, { type: 'application/json' });
+    if (isPhone() && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Box App back-up' }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // Offline mode: nudge for a backup once enough unprotected work piles up
+  function backupNudge() {
+    if (!repo.offlineMode) return '';
+    const n = repo.unbackedLogs();
+    if (n < 5) return '';
+    return `
+      <div class="card backup-nudge">
+        <span class="suggest-icon">💾</span>
+        <div class="grow"><div class="title">${n} sessies alleen op dit apparaat</div>
+          <div class="muted">Offline modus: geen cloud back-up. Exporteer even, of schakel sync in via Profiel.</div></div>
+        <button class="btn primary" id="nudge-export">Back-up</button>
+      </div>`;
+  }
+
   // ---------- Views ----------
   async function homeView() {
     const user = await repo.getCurrentUser();
@@ -78,6 +112,7 @@
         <div class="grow"><h1>Box App</h1><div class="muted accent">Log. Compare. Get stronger.</div></div>
         <a class="avatar" href="#/profile">${avatarInner(user)}</a>
       </div>
+      ${backupNudge()}
       <h2>Mijn oefeningen</h2>
       <div class="muted">Jouw favoriete oefeningen · ${main.length}</div>
       <div class="list">${main.length ? main.map(favRow).join('') : `<div class="card empty">Nog geen favorieten. Markeer oefeningen met ☆.</div>`}</div>
@@ -89,6 +124,7 @@
         </a>
       </div>
       ${main.length ? suggestion : ''}`;
+    document.getElementById('nudge-export')?.addEventListener('click', async () => { await downloadBackup(); homeView(); });
   }
 
   async function exercisesView() {
@@ -427,8 +463,10 @@
           <button class="btn danger" id="del-btn" type="submit" disabled>Profiel definitief verwijderen</button></form>
       </details>
       <button class="btn danger" id="reset">Lokale gegevens resetten</button>
-      ${repo.syncEnabled ? '<button class="btn" id="logout">🔒 Uitloggen</button>' : ''}`;
+      ${repo.syncEnabled ? '<button class="btn" id="logout">🔒 Uitloggen</button>' : ''}
+      ${repo.offlineMode ? '<button class="btn" id="go-online">☁️ Online synchroniseren inschakelen</button>' : ''}`;
     document.getElementById('logout')?.addEventListener('click', () => { repo.logout(); router(); });
+    document.getElementById('go-online')?.addEventListener('click', () => { repo.setOfflineMode(false); router(); });
     document.getElementById('photo').addEventListener('change', async ev => {
       const file = ev.target.files[0];
       if (!file) return;
@@ -453,25 +491,7 @@
       location.hash = '#/';
       router();
     });
-    document.getElementById('export').addEventListener('click', async () => {
-      const dump = await repo.exportDatabase();
-      const d = new Date(), p = n => String(n).padStart(2, '0');
-      const name = `boxapp-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
-      const json = JSON.stringify(dump, null, 2);
-      const file = new File([json], name, { type: 'application/json' });
-      if (isPhone() && navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'Box App back-up' }); return; }
-        catch (e) { if (e.name === 'AbortError') return; }
-      }
-      const blob = new Blob([json], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    });
+    document.getElementById('export').addEventListener('click', downloadBackup);
     document.getElementById('import').addEventListener('change', async ev => {
       const file = ev.target.files[0];
       ev.target.value = '';
@@ -840,7 +860,18 @@
           <div id="l-error" class="login-error" hidden></div>
           <button class="btn primary" type="submit">Inloggen</button>
         </form>
+        <details class="offline-choice">
+          <summary>Zonder account verder</summary>
+          <p class="muted">📴 Alles blijft alleen op dit apparaat. Er wordt <b>geen back-up</b> gemaakt: browserdata wissen of je telefoon kwijtraken = alles weg. Je kunt later altijd nog inloggen; je lokale data gaat dan mee naar de cloud.</p>
+          <button class="btn" id="go-offline" type="button">Ik snap het, offline gebruiken</button>
+        </details>
       </div>`;
+    document.getElementById('go-offline').addEventListener('click', () => {
+      repo.setOfflineMode(true);
+      document.querySelector('.tabbar').hidden = false;
+      location.hash = '#/';
+      router();
+    });
     const input = document.getElementById('l-secret'), err = document.getElementById('l-error');
     input.focus();
     document.getElementById('login').addEventListener('submit', async ev => {
@@ -863,7 +894,7 @@
 
   function renderSyncStatus(s = repo.status) {
     let el = document.getElementById('sync-status');
-    if (!repo.syncEnabled) return;
+    if (!repo.syncEnabled) { if (el) el.hidden = true; return; }
     if (!el) {
       el = document.createElement('button');
       el.id = 'sync-status';
@@ -871,6 +902,7 @@
       el.addEventListener('click', () => repo.sync());
       document.body.appendChild(el);
     }
+    el.hidden = false;
     const labels = { idle: '•', syncing: '⟳', ok: '✓', offline: '⚠ offline', error: '⚠ sync', login: '🔒' };
     el.dataset.state = s.state;
     el.textContent = labels[s.state] + (s.pending && s.state !== 'syncing' ? ` ${s.pending}` : '');
@@ -888,6 +920,7 @@
 
   async function router() {
     if (repo.needsLogin()) return loginView();
+    renderSyncStatus();
     if (!(await repo.getCurrentUser())) { document.getElementById('sidebar').hidden = true; return onboardingView(); }
     document.querySelector('.tabbar').hidden = false;
     document.getElementById('sidebar').hidden = false;

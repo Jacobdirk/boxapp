@@ -291,9 +291,21 @@
     _remove(row) { return this._touch(Object.assign(row, { deleted_at: nowIso() })); }
 
     // ---------- Sync ----------
-    get syncEnabled() { return this.remote.configured; }
-    needsLogin() { return this.remote.configured && !this.remote.loggedIn; }
-    async login(secret) { await this.remote.login(secret); await this.sync(); }
+    get syncEnabled() { return this.remote.configured && !this.offlineMode; }
+    get offlineMode() { return !!this.db.meta.offlineMode; }
+    setOfflineMode(on) {
+      this.db.meta.offlineMode = !!on;
+      this._save(false);
+      // Ask the browser not to evict local data, since it is the only copy
+      if (on && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    }
+    // Logs created after the last export (offline mode has no cloud copy)
+    unbackedLogs() {
+      const since = this.db.meta.lastBackup || '';
+      return this._live('logs').filter(l => l.logged_at > since).length;
+    }
+    needsLogin() { return this.remote.configured && !this.offlineMode && !this.remote.loggedIn; }
+    async login(secret) { await this.remote.login(secret); this.setOfflineMode(false); await this.sync(); }
     logout() { this.remote.logout(); this._status('offline'); }
     pendingCount() { return TABLES.reduce((n, t) => n + this.db[t.local].filter(r => r.dirty).length, 0); }
     _status(state, error = null) {
@@ -301,12 +313,12 @@
       window.dispatchEvent(new CustomEvent('boxapp:sync', { detail: this.status }));
     }
     scheduleSync(delay = 1500) {
-      if (!this.remote.configured) return;
+      if (!this.syncEnabled) return;
       clearTimeout(this._timer);
       this._timer = setTimeout(() => this.sync(), delay);
     }
     async sync() {
-      if (!this.remote.configured || !this.remote.loggedIn) return;
+      if (!this.syncEnabled || !this.remote.loggedIn) return;
       if (!navigator.onLine) return this._status('offline');
       if (this._syncing) { this._again = true; return; }
       this._syncing = true;
@@ -396,7 +408,10 @@
     // Reset local copy (remote data is pulled again on next sync)
     async resetDatabase() { this.db = migrate(seedDatabase()); this._save(); }
     async exportDatabase() {
-      return { app: 'boxapp', exported_at: nowIso(), data: JSON.parse(JSON.stringify(this.db)) };
+      const dump = { app: 'boxapp', exported_at: nowIso(), data: JSON.parse(JSON.stringify(this.db)) };
+      this.db.meta.lastBackup = dump.exported_at;
+      this._save(false);
+      return dump;
     }
     async importDatabase(dump) {
       const data = dump && dump.app === 'boxapp' ? dump.data : dump;

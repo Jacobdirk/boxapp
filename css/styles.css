@@ -198,3 +198,11 @@ label.btn { cursor: pointer; }
 .sync-status[data-state="offline"], .sync-status[data-state="error"] { color: #fbbf24; }
 .sync-status[data-state="login"] { color: #f87171; }
 .login-error { color: #f87171; margin: 8px 0; text-align: center; }
+
+/* Offline mode */
+.offline-choice { margin-top: 18px; text-align: left; }
+.offline-choice summary { cursor: pointer; color: #9fb3c8; text-align: center; list-style: none; text-decoration: underline; }
+.offline-choice summary::-webkit-details-marker { display: none; }
+.offline-choice p { margin: 10px 0; line-height: 1.4; }
+.backup-nudge { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(251,191,36,.4); }
+.backup-nudge .btn { width: auto; margin: 0; padding: 8px 12px; }
