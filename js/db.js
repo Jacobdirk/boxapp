@@ -458,7 +458,7 @@
     }
     // Default profiles (fixed ids, so seeding on several devices merges instead of duplicating)
     async seedProfiles() {
-      if (this._live('users').length) return;
+      if (!this.syncEnabled || this._live('users').length) return;
       const SEED_PROFILES = [
         { id: '00000000-0000-4000-8000-000000000001', name: 'JD', favorites: null },
         { id: '00000000-0000-4000-8000-000000000002', name: 'Bart', favorites: ['Cable Row', 'Hex Bar Deadlift', 'Bench Press', 'Shoulder Press', 'Cable Fly', 'Biceps Curl', 'Tricep Pulley', 'Shrugs'] }

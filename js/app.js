@@ -123,7 +123,8 @@
           <span class="chev">›</span>
         </a>
       </div>
-      ${main.length ? suggestion : ''}`;
+      ${main.length ? suggestion : ''}
+      ${window.muscleMapCard ? await window.muscleMapCard(user) : ''}`;
     document.getElementById('nudge-export')?.addEventListener('click', async () => { await downloadBackup(); homeView(); });
   }
 
