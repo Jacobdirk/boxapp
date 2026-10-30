@@ -1,7 +1,7 @@
 // Service worker: network-first for the app shell so new versions arrive immediately,
 // falling back to cache when offline.
 const CACHE = 'boxapp-shell';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './js/icons.js', './icons/icon-192.png', './icons/icon-512.png'];
+'./js/icons.js', './js/config.js',
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

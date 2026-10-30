@@ -190,3 +190,11 @@ label.btn { cursor: pointer; }
 .icon-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; margin: 6px 0 10px; }
 .icon-picker .icon { border: 2px solid transparent; cursor: pointer; padding: 0; }
 .icon-picker .icon.picked { border-color: var(--accent); }
+
+/* Sync status + login */
+.sync-status { position: fixed; top: calc(env(safe-area-inset-top) + 8px); right: 10px; z-index: 50; border: 1px solid rgba(255,255,255,.12); background: rgba(6,18,28,.85); color: #9fb3c8; border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.sync-status[data-state="ok"] { color: #4ade80; }
+.sync-status[data-state="syncing"] { color: #60a5fa; }
+.sync-status[data-state="offline"], .sync-status[data-state="error"] { color: #fbbf24; }
+.sync-status[data-state="login"] { color: #f87171; }
+.login-error { color: #f87171; margin: 8px 0; text-align: center; }

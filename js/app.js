@@ -132,7 +132,7 @@
     if (exercisesView.query) { search.value = exercisesView.query; applyFilter(); }
     search.addEventListener('input', () => { exercisesView.query = search.value; });
     view.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', async () => {
-      const id = +b.dataset.fav;
+      const id = b.dataset.fav;
       await repo.setFavorite(user.id, id, !favs.has(id));
       exercisesView();
     }));
@@ -157,7 +157,10 @@
     input.oninput = render;
     render();
     overlay.hidden = false;
-    if (!(history.state && history.state.search)) history.pushState({ search: true }, '', location.href);
+    if (!(history.state && history.state.search)) {
+      if ((location.hash || '#/') !== '#/') location.replace('#/');
+      history.pushState({ search: true }, '', '#/');
+    }
     input.focus();
   }
 
@@ -174,7 +177,7 @@
   // Opening an exercise from any page other than home replaces that page, so back always lands on home
   document.addEventListener('click', ev => {
     const a = ev.target.closest('a[href^="#/exercise/"]');
-    if (!a || ev.defaultPrevented || !/^#\/exercise\/\d+$/.test(a.getAttribute('href'))) return;
+    if (!a || ev.defaultPrevented || !/^#\/exercise\/[\w-]+$/.test(a.getAttribute('href'))) return;
     if ((location.hash || '#/') === '#/') return;
     ev.preventDefault();
     location.replace(a.getAttribute('href'));
@@ -423,7 +426,9 @@
         <form id="del-user"><div class="stepper"><input id="del-code" autocomplete="off" autocapitalize="characters" placeholder="${captcha}" /></div>
           <button class="btn danger" id="del-btn" type="submit" disabled>Profiel definitief verwijderen</button></form>
       </details>
-      <button class="btn danger" id="reset">Alles resetten naar standaard</button>`;
+      <button class="btn danger" id="reset">Lokale gegevens resetten</button>
+      ${repo.syncEnabled ? '<button class="btn" id="logout">🔒 Uitloggen</button>' : ''}`;
+    document.getElementById('logout')?.addEventListener('click', () => { repo.logout(); router(); });
     document.getElementById('photo').addEventListener('change', async ev => {
       const file = ev.target.files[0];
       if (!file) return;
@@ -484,13 +489,13 @@
       }
     });
     document.getElementById('reset').addEventListener('click', async () => {
-      if (!confirm('Alle gebruikers, oefeningen en logs wissen en standaard oefeningen terugzetten?')) return;
+      if (!confirm('Lokale kopie wissen? Gegevens in de cloud blijven bewaard en worden opnieuw opgehaald.')) return;
       await repo.resetDatabase();
       location.hash = '#/';
       router();
     });
     view.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', async () => {
-      await repo.setCurrentUser(+b.dataset.id); router();
+      await repo.setCurrentUser(b.dataset.id); router();
     }));
     document.getElementById('add').addEventListener('click', async () => {
       const name = (prompt('Naam van nieuwe gebruiker:') || '').trim();
@@ -564,7 +569,7 @@
     if (olderBtn) olderBtn.addEventListener('click', () => historyView(filter, !showOlder));
     view.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
       if (!confirm('Deze sessie verwijderen?')) return;
-      await repo.deleteLog(+b.dataset.del);
+      await repo.deleteLog(b.dataset.del);
       historyView(filter, showOlder);
     }));
   }
@@ -755,14 +760,14 @@
       </select></div>` : `<a class="row" href="#/profile"><div class="grow"><div class="title">Andere persoon</div><div class="muted">Voeg een profiel toe om te vergelijken</div></div><span class="chev">›</span></a>`}
       `;
 
-    document.getElementById('c-ex').addEventListener('change', ev => { cmpState.exerciseId = +ev.target.value; cmpState.range = null; comparisonsView(); });
-    view.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { cmpState.mode = b.dataset.mode; comparisonsView(); }));
+    document.getElementById('c-ex').addEventListener('change', ev => { cmpState.exerciseId = ev.target.value; cmpState.range = null; comparisonsView(); });
+    view.querySelectorAll('[data-mode]')
     view.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => { cmpState.range = +b.dataset.range; comparisonsView(); }));
     bindTabs();
     const otherSel = document.getElementById('c-other');
     if (otherSel) otherSel.addEventListener('change', ev => {
       const v = ev.target.value;
-      cmpState.otherId = v === 'all' ? 'all' : v ? +v : null;
+      cmpState.otherId = v === 'all' ? 'all' : v || null;
       comparisonsView();
     });
   }
@@ -771,9 +776,9 @@
     [/^#?\/?$/, homeView, 'home'],
     [/^#\/exercises$/, exercisesView, 'home'],
     [/^#\/exercise\/new$/, () => exerciseFormView(null), 'home'],
-    [/^#\/exercise\/(\d+)\/edit$/, m => exerciseFormView(+m[1]), 'home'],
-    [/^#\/exercise\/(\d+)$/, m => exerciseView(+m[1]), 'home'],
-    [/^#\/exercise\/(\d+)\/log$/, m => logView(+m[1]), 'home'],
+    [/^#\/exercise\/([\w-]+)\/edit$/, m => exerciseFormView(m[1]), 'home'],
+    [/^#\/exercise\/([\w-]+)$/, m => exerciseView(m[1]), 'home'],
+    [/^#\/exercise\/([\w-]+)\/log$/, m => logView(m[1]), 'home'],
     [/^#\/history$/, () => historyView(), 'history'],
     [/^#\/comparisons$/, () => comparisonsView(), 'comparisons'],
     [/^#\/profile$/, profileView, 'profile']
@@ -817,13 +822,74 @@
         </button>`).join('')}
       <a class="side-user add" href="#/profile"><span class="avatar">+</span><span class="grow">Profiel toevoegen</span></a>`;
     side.querySelectorAll('button[data-id]').forEach(b => b.addEventListener('click', async () => {
-      await repo.setCurrentUser(+b.dataset.id);
+      await repo.setCurrentUser(b.dataset.id);
       router();
     }));
   }
 
+  function loginView() {
+    document.querySelector('.tabbar').hidden = true;
+    document.getElementById('sidebar').hidden = true;
+    view.innerHTML = `
+      <div class="onboarding">
+        <h1>Box App</h1>
+        <div class="muted accent">Log in met de gedeelde code</div>
+        <form id="login">
+          <div class="field"><label for="l-secret">Code</label>
+            <div class="stepper"><input id="l-secret" type="password" autocomplete="current-password" required /></div></div>
+          <div id="l-error" class="login-error" hidden></div>
+          <button class="btn primary" type="submit">Inloggen</button>
+        </form>
+      </div>`;
+    const input = document.getElementById('l-secret'), err = document.getElementById('l-error');
+    input.focus();
+    document.getElementById('login').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const btn = ev.submitter || ev.target.querySelector('button');
+      btn.disabled = true; err.hidden = true;
+      try {
+        await repo.login(input.value);
+        input.value = '';
+        document.querySelector('.tabbar').hidden = false;
+        location.hash = '#/';
+        router();
+      } catch (e) {
+        err.textContent = e.status === 400 ? 'Onjuiste code' : `Inloggen mislukt: ${e.message}`;
+        err.hidden = false;
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function renderSyncStatus(s = repo.status) {
+    let el = document.getElementById('sync-status');
+    if (!repo.syncEnabled) return;
+    if (!el) {
+      el = document.createElement('button');
+      el.id = 'sync-status';
+      el.className = 'sync-status';
+      el.addEventListener('click', () => repo.sync());
+      document.body.appendChild(el);
+    }
+    const labels = { idle: '•', syncing: '⟳', ok: '✓', offline: '⚠ offline', error: '⚠ sync', login: '🔒' };
+    el.dataset.state = s.state;
+    el.textContent = labels[s.state] + (s.pending && s.state !== 'syncing' ? ` ${s.pending}` : '');
+    el.title = s.error || (s.last ? `Laatst gesynchroniseerd: ${new Date(s.last).toLocaleString()}` : 'Nog niet gesynchroniseerd');
+  }
+  window.addEventListener('boxapp:sync', e => renderSyncStatus(e.detail));
+  window.addEventListener('boxapp:auth-required', () => router());
+  window.addEventListener('boxapp:remote-change', async () => {
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return;
+    const y = window.scrollY;
+    await router();
+    window.scrollTo(0, y);
+  });
+
   async function router() {
+    if (repo.needsLogin()) return loginView();
     if (!(await repo.getCurrentUser())) { document.getElementById('sidebar').hidden = true; return onboardingView(); }
+    document.querySelector('.tabbar').hidden = false;
     document.getElementById('sidebar').hidden = false;
     renderSidebar();
     const hash = location.hash || '#/';
@@ -856,4 +922,6 @@
 
   window.addEventListener('hashchange', router);
   router();
+  renderSyncStatus();
+  repo.sync();
 })();
