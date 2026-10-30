@@ -248,11 +248,12 @@
       this._store(data);
     }
     async login(secret) {
-      const hash = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))]
-        .map(b => b.toString(16).padStart(2, '0')).join('');
-      const email = `${(await hash(`boxapp:email:v1:${secret}`)).slice(0, 16)}@boxapp.local`;
-      const password = await hash(`boxapp:v1:${secret}`);
-      await this._auth('password', { email, password });
+      // PBKDF2-SHA256 (must match tools/generate-login.ps1): bytes 0-31 = password, 32-39 = email name
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode('boxapp:v2'), iterations: 600000 }, key, 320);
+      const hex = [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
+      await this._auth('password', { email: `${hex.slice(64, 80)}@boxapp.local`, password: hex.slice(0, 64) });
     }
     logout() { this._store(null); }
     async _token() {
