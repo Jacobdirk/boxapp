@@ -17,6 +17,11 @@
     deadlift: `${head(12, 3.8)}<path d="M12 5.8v7l-2 8M12 12.8l2 8M12 7.5l-2.5 6M12 7.5l2.5 6"/>${bar(3, 21, 13.5)}`,
     rdl: `${head(17, 5)}<path d="M15.5 6.5L8 10l1 5-1 6M8 10l2.5 5-1 6"/><path d="M13 8v8.5M11 9v7.5"/>${bar(4, 20, 16.5)}`,
     bench: `<path d="M4 15h16M6 15v5M18 15v5"/>${head(5.5, 12.5)}<path d="M7.5 13h8l2 3.5-1 3.5M9.5 13V7.5M13 13V7.5"/>${bar(4, 18.5, 6)}`,
+    inclinebench: `<path d="M4 18L15 11M6 17v4M17 15v6M15 11l2 4"/>${head(5.5, 14.5)}<path d="M7.5 15l6-4 4 3.5-1 6M9 14V8M12.5 12V7"/>${bar(4, 18, 6)}`,
+    dbbench: `<path d="M4 15h16M6 15v5M18 15v5"/>${head(5.5, 12.5)}<path d="M7.5 13h8l2 3.5-1 3.5M9 13V8M14 13V8"/>${db(9, 6.5)}${db(14, 6.5)}`,
+    inclinedbbench: `<path d="M4 18L15 11M6 17v4M17 15v6M15 11l2 4"/>${head(5.5, 14.5)}<path d="M7.5 15l6-4 4 3.5-1 6M8.5 14V8.5M13 12V7.5"/>${db(8.5, 6.5)}${db(13, 5.5)}`,
+    chestrow: `<path d="M6 21l5-11M8 21h-4" />${head(14.5, 5.5)}<path d="M13 7.5L9.5 13l1.5 4 4 4M9.5 13l-1 4.5"/><path d="M12 10.5v6M15 9.5v6"/>${bar(8, 19, 17)}`,
+    seatedrow: `<path d="M21 6v14M3 16h9M5 16v4"/><path d="M21 11h-5" stroke-width="2.6"/>${head(7, 5.5)}<path d="M7 7.5V15M7 10l4 1.5 5-.5M7 15l5-1 4 2v4"/>`,
     shoulderpress: `${bar(3, 21, 4)}${head(12, 8)}<path d="M8 4l-1 5 3.5 2M16 4l1 5-3.5 2M12 10v6l-2 5M12 16l2 5"/>`,
     dbshoulderpress: `${dbV(6, 4)}${dbV(18, 4)}${head(12, 8)}<path d="M6 6.5l1 4 3.5 1M18 6.5l-1 4-3.5 1M12 10v6l-2 5M12 16l2 5"/>`,
     machinepress: `<path d="M19 3v18M5 21h14"/><path d="M15 5h4" stroke-width="2.6"/>${head(11, 7.5)}<path d="M15 5l-1 4.5-3 1M11 9.5V15h4l1 6M7 15h8"/>`,
@@ -30,7 +35,16 @@
     hamcurl: `<path d="M3 15h14M5 15v5M15 15v5"/>${head(4.5, 11.5)}<path d="M6.5 12.5h8l3-5.5"/><path d="M17.5 7l1.5-2" stroke-width="2.6"/>`,
     calfraise: `${head(12, 3.8)}<path d="M12 5.8V14l-1 5 .8 1.8M12 14l1 5 .8 1.8M12 8l-3 5M12 8l3 5"/><path d="M6 21h12" stroke-width="2.6"/><path d="M18 5V2l-1.2 1.2M18 2l1.2 1.2" stroke-width="1.4"/>`,
     pushup: `${head(4.5, 10)}<path d="M6.5 11L21 15.5M8.5 11.6l.5 4.4M9 16l1.5 4"/><path d="M3 20.5h18" stroke-width="1.2"/>`,
+    splitsquat: `<path d="M17 15h5M18 15v6"/>${head(10, 4)}<path d="M10 6v7l-3 2.5V21M10 13l4.5 1.5 3-.5M10 7.5l-3.5 2M10 7.5l3.5 2"/>${dbV(6.5, 11)}${dbV(13.5, 11)}`,
+    facepull: `<circle cx="21" cy="5" r="1.2"/><path d="M21 6.2L14 8"/>${head(10, 6)}<path d="M14 8l-2.5-2.5M14 8l-2.5 3M10 8v7l-2 6M10 15l2 6M10 9l1.5-3.5M10 9l1.5 2"/>`,
+    skullcrusher: `<path d="M4 15h16M6 15v5M18 15v5"/>${head(5.5, 12.5)}<path d="M7.5 13h8l2 3.5-1 3.5M9.5 13L8.5 8l-2.5 2"/>${bar(2, 11, 9.5)}`,
     dips: `<path d="M4 10h5M15 10h5M5 10v11M19 10v11"/>${head(12, 4.5)}<path d="M8 10l1-3.5h6l1 3.5M9 6.5V8M15 6.5V8M12 6.5v6l-2 3 1.5 3M12 12.5l2 3-1.5 3"/>`,
+    powerclean: `${bar(3, 21, 8)}${head(12, 4.5)}<path d="M9 8l1.5 2.5h3L15 8M12 10.5V15l-3 2 1 4M12 15l3 2-1 4"/>`,
+    cleanjerk: `${bar(3, 21, 3)}${head(12, 7)}<path d="M9 3l1 5 2 1 2-1 1-5M12 9v5l-4 3v4M12 14l4 2.5 1 4.5"/>`,
+    snatch: `${bar(1.5, 22.5, 3)}${head(12, 8)}<path d="M5 3l4 6.5 3 1 3-1 4-6.5M12 10.5V15l-3.5 2 .5 4M12 15l3.5 2-.5 4"/>`,
+    farmerswalk: `${head(12, 3.8)}<path d="M12 5.8v7.5l-3 7.5M12 13.3l3 7.5M12 7.5l-4 5.5M12 7.5l4 5.5"/>${dbV(8, 15)}${dbV(16, 15)}`,
+    landminepress: `<path d="M3 21L16 5" stroke-width="2.2"/><path d="M14.5 3.5l3 3" stroke-width="2.6"/>${head(10, 9)}<path d="M14 7l-2 3-2 1M10 11v5l-2 5M10 16l2.5 5"/><path d="M3 21h3" stroke-width="2.6"/>`,
+    preachercurl: `<path d="M5 11l7 5M5 11v10M3 21h6"/>${head(15, 5)}<path d="M15 7v7l-2 7M15 14l2 7M15 9l-3 5-3-4"/>${db(9, 9)}`,
     generic: `${db(12, 12)}<path d="M7 12h10" stroke-width="2.6"/>`
   };
 

@@ -157,13 +157,38 @@
     input.oninput = render;
     render();
     overlay.hidden = false;
+    if (!(history.state && history.state.search)) history.pushState({ search: true }, '', location.href);
     input.focus();
   }
 
-  function closeSearch() { document.getElementById('search-overlay').hidden = true; }
+  // Search has its own history entry: back (phone button or X/Esc) closes it and returns home
+  function closeSearch() {
+    if (history.state && history.state.search) history.back();
+    else document.getElementById('search-overlay').hidden = true;
+  }
+  window.addEventListener('popstate', () => {
+    const overlay = document.getElementById('search-overlay');
+    if (overlay.hidden) return;
+    overlay.hidden = true;
+  });
+  // Opening an exercise from any page other than home replaces that page, so back always lands on home
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('a[href^="#/exercise/"]');
+    if (!a || ev.defaultPrevented || !/^#\/exercise\/\d+$/.test(a.getAttribute('href'))) return;
+    if ((location.hash || '#/') === '#/') return;
+    ev.preventDefault();
+    location.replace(a.getAttribute('href'));
+  });
   document.querySelector('[data-search-open]').addEventListener('click', ev => { ev.preventDefault(); openSearch(); });
-  document.getElementById('search-overlay').addEventListener('click', ev => { if (ev.target.id === 'search-overlay' || ev.target.closest('a,[data-search-close]')) closeSearch(); });
-  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeSearch(); });
+  document.getElementById('search-overlay').addEventListener('click', ev => {
+    const link = ev.target.closest('a[href]');
+    if (link) {
+      ev.preventDefault();
+      document.getElementById('search-overlay').hidden = true;
+      location.replace(link.getAttribute('href'));
+    } else if (ev.target.id === 'search-overlay' || ev.target.closest('[data-search-close]')) closeSearch();
+  });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !document.getElementById('search-overlay').hidden) closeSearch(); });
 
   const COLORS = ['green', 'blue', 'yellow', 'purple', 'orange', 'teal', 'slate'];
 
@@ -212,8 +237,8 @@
         color
       };
       if (!data.name) return alert('Vul een naam in.');
-      if (id) { await repo.updateExercise(id, data); location.hash = `#/exercise/${id}`; }
-      else { const created = await repo.addExercise(data); location.hash = `#/exercise/${created.id}`; }
+      if (id) { await repo.updateExercise(id, data); location.replace(`#/exercise/${id}`); }
+      else { const created = await repo.addExercise(data); location.replace(`#/exercise/${created.id}`); }
     });
     if (id) document.getElementById('del').addEventListener('click', async () => {
       if (!confirm(`"${ex.name}" en alle bijbehorende logs verwijderen?`)) return;
@@ -255,11 +280,11 @@
     const max = Math.max(1, ...recent.map(l => l.weight));
 
     view.innerHTML = `
-      <button class="back" onclick="location.hash='#/'">←</button>
+      <button class="back" onclick="location.replace('#/')">←</button>
       <div class="header">
         <div class="icon lg c-${ex.color}">${renderExerciseIcon(ex.icon)}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
-        <button class="star ${fav ? 'on' : ''}" id="fav" title="Favoriet">${fav ? '★' : '☆'}</button>
+        <button class="star
         <a class="star" href="#/exercise/${id}/edit" title="Bewerken">✎</a>
       </div>
       <div class="last-row">
@@ -270,7 +295,7 @@
         <a class="btn primary log-btn" href="#/exercise/${id}/log">＋ Log deze oefening</a>
       </div>
       ${variants.length ? `<h3>Snel wisselen</h3><div class="chips">${variants.map(v => `
-        <a class="chip" href="#/exercise/${v.id}"><span class="chip-icon c-${v.color}">${renderExerciseIcon(v.icon)}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
+        <a class="chip" href="#/exercise/${v.id}" onclick="event.preventDefault();location.replace(this.getAttribute('href'))"><span class="chip-icon c-${v.color}">${renderExerciseIcon(v.icon)}</span>${esc(v.name)}</a>`).join('')}</div>` : ''}
       <h3>Jouw progressie</h3>
       <div class="seg" role="tablist" aria-label="Rep range">${REP_RANGES.map(r => `<button data-range="${r}" class="${r === range ? 'on' : ''}" ${counts[r] ? '' : 'disabled'}>${r === 12 ? '12+' : r}</button>`).join('')}</div>
       ${recent.length ? `<div class="chart">${recent.map(l => `
@@ -283,7 +308,7 @@
       <div class="card table">${logs.length ? logs.slice(0, 10).map(l => `
         <div class="tr"><span>${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
       </div>`;
-    document.getElementById('fav').addEventListener('click', async () => {
+    document.getElementById('fav')?.addEventListener('click', async () => {
       await repo.setFavorite(user.id, id, !fav);
       exerciseView(id, range);
     });
@@ -346,7 +371,7 @@
       const weight = read('weight'), reps = Math.round(read('reps')), sets = Math.round(read('sets')) || null;
       if (reps <= 0) return alert('Vul een geldig aantal reps in.');
       await repo.addLog({ user_id: user.id, exercise_id: id, weight, reps, sets });
-      location.hash = `#/exercise/${id}`;
+      location.replace(`#/exercise/${id}`);
     });
   }
 

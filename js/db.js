@@ -16,7 +16,7 @@
  */
 (function () {
   const STORAGE_KEY = 'boxapp.db.v1';
-  const DB_VERSION = 7;
+  const DB_VERSION = 10;
 
   // Initial feed: base exercises. Used by seedDatabase() (and later as SQL seed script).
   // Ids are stable; removed ids (8, 11, 12) are not reused.
@@ -44,14 +44,32 @@
       { id: 24, name: 'Push Ups', muscles: 'Borst / Armen', icon: 'svg:pushup', color: 'slate', category: 'filler' },
       { id: 25, name: 'Lat Pulley', muscles: 'Rug / Biceps', icon: 'svg:latpulley', color: 'slate', category: 'filler' },
       { id: 26, name: 'Dips', muscles: 'Borst / Triceps', icon: 'svg:dips', color: 'slate', category: 'filler' },
-      { id: 27, name: 'Chin Ups', muscles: 'Rug / Biceps', icon: 'svg:chinup', color: 'slate', category: 'filler' }
+      { id: 27, name: 'Chin Ups', muscles: 'Rug / Biceps', icon: 'svg:chinup', color: 'slate', category: 'filler' },
+      { id: 28, name: 'Incline Bench Press', muscles: 'Bovenborst', icon: 'svg:inclinebench', color: 'slate', category: 'filler' },
+      { id: 29, name: 'Dumbbell Bench Press', muscles: 'Borst', icon: 'svg:dbbench', color: 'slate', category: 'filler' },
+      { id: 30, name: 'Incline Dumbbell Bench Press', muscles: 'Bovenborst', icon: 'svg:inclinedbbench', color: 'slate', category: 'filler' },
+      { id: 31, name: 'Chest Supported Row', muscles: 'Rug', icon: 'svg:chestrow', color: 'slate', category: 'filler' },
+      { id: 32, name: 'Seated Row', muscles: 'Rug', icon: 'svg:seatedrow', color: 'slate', category: 'filler' },
+      { id: 33, name: 'Bulgarian Split Squat', muscles: 'Benen / Billen', icon: 'svg:splitsquat', color: 'slate', category: 'filler' },
+      { id: 34, name: 'Face Pulls', muscles: 'Achterkant schouders / Bovenrug', icon: 'svg:facepull', color: 'slate', category: 'filler' },
+      { id: 35, name: 'Skull Crushers', muscles: 'Triceps', icon: 'svg:skullcrusher', color: 'slate', category: 'filler' },
+      { id: 36, name: 'Power Clean', muscles: 'Volledig lichaam', icon: 'svg:powerclean', color: 'slate', category: 'filler' },
+      { id: 37, name: "Farmer's Walk", muscles: 'Grip / Core / Traps', icon: 'svg:farmerswalk', color: 'slate', category: 'filler' },
+      { id: 38, name: 'Clean & Jerk', muscles: 'Volledig lichaam', icon: 'svg:cleanjerk', color: 'slate', category: 'filler' },
+      { id: 39, name: 'Snatch', muscles: 'Volledig lichaam', icon: 'svg:snatch', color: 'slate', category: 'filler' },
+      { id: 40, name: 'Landmine Press', muscles: 'Schouders / Borst', icon: 'svg:landminepress', color: 'slate', category: 'filler' },
+      { id: 41, name: 'Preacher Curl', muscles: 'Biceps', icon: 'svg:preachercurl', color: 'slate', category: 'filler' }
   ].map(e => ({ ...e, variant_group: null }));
   // Quick swap groups (exercises.variant_group)
   const SEED_VARIANT_GROUPS = {
-    row: ['Cable Row', 'Dumbbell Row', 'Barbell Row'],
+    row: ['Cable Row', 'Seated Row', 'Chest Supported Row', 'Dumbbell Row', 'Barbell Row'],
+    bench: ['Bench Press', 'Incline Bench Press', 'Dumbbell Bench Press', 'Incline Dumbbell Bench Press'],
     deadlift: ['Hex Bar Deadlift', 'Deadlift', 'Romanian Deadlift'],
-    shoulder_press: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Machine Shoulder Press'],
-    squat: ['Squat', 'Leg Press'],
+    shoulder_press: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Machine Shoulder Press', 'Landmine Press'],
+    olympic: ['Power Clean', 'Clean & Jerk', 'Snatch'],
+    curl: ['Biceps Curl', 'Preacher Curl'],
+    squat: ['Squat', 'Leg Press', 'Bulgarian Split Squat'],
+    triceps: ['Tricep Pulley', 'Skull Crushers'],
     pull_up: ['Pull Ups', 'Chin Ups', 'Lat Pulley']
   };
   const applyVariantGroups = exercises => {
@@ -140,6 +158,33 @@
       }
       applyVariantGroups(db.exercises);
       db.meta.version = 7;
+    }
+    if (db.meta.version < 8) {
+      for (const name of ['Incline Bench Press', 'Dumbbell Bench Press', 'Incline Dumbbell Bench Press', 'Chest Supported Row', 'Seated Row']) {
+        if (db.exercises.some(e => (e.name || '').toLowerCase() === name.toLowerCase())) continue;
+        const seed = SEED_EXERCISES.find(e => e.name === name);
+        db.exercises.push({ ...seed, variant_group: null, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 8;
+    }
+    if (db.meta.version < 9) {
+      for (const name of ['Bulgarian Split Squat', 'Face Pulls', 'Skull Crushers']) {
+        if (db.exercises.some(e => (e.name || '').toLowerCase() === name.toLowerCase())) continue;
+        const seed = SEED_EXERCISES.find(e => e.name === name);
+        db.exercises.push({ ...seed, variant_group: null, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 9;
+    }
+    if (db.meta.version < 10) {
+      for (const name of ['Power Clean', "Farmer's Walk", 'Clean & Jerk', 'Snatch', 'Landmine Press', 'Preacher Curl']) {
+        if (db.exercises.some(e => (e.name || '').toLowerCase() === name.toLowerCase())) continue;
+        const seed = SEED_EXERCISES.find(e => e.name === name);
+        db.exercises.push({ ...seed, variant_group: null, id: ++db.meta.seq.exercises });
+      }
+      applyVariantGroups(db.exercises);
+      db.meta.version = 10;
     }
     return db;
   }
