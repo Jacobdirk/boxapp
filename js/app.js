@@ -323,7 +323,7 @@
       <div class="header">
         <div class="icon lg c-${ex.color}">${renderExerciseIcon(ex.icon)}</div>
         <div class="grow"><h1>${esc(ex.name)}</h1><div class="muted">${esc(ex.muscles)}</div></div>
-        <button class="star
+        <button class="star ${fav ? 'on' : ''}" id="fav" title="Favoriet">${fav ? '★' : '☆'}</button>
         <a class="star" href="#/exercise/${id}/edit" title="Bewerken">✎</a>
       </div>
       <div class="last-row">
@@ -804,29 +804,56 @@
     [/^#\/profile$/, profileView, 'profile']
   ];
 
-  function onboardingView() {
+  let onboardToken = 0;
+  async function onboardingView() {
+    const token = ++onboardToken;
     document.querySelector('.tabbar').hidden = true;
+    // First boot with sync: wait briefly for profiles from the cloud before offering choices
+    if (repo.syncEnabled && !repo.hasSynced && navigator.onLine) {
+      view.innerHTML = `
+        <div class="onboarding">
+          <h1>Box App</h1>
+          <div class="loading"><span class="spinner"></span>Profielen ophalen…</div>
+        </div>`;
+      await Promise.race([repo.sync(), new Promise(r => setTimeout(r, 8000))]);
+      if (token !== onboardToken) return;
+      if (await repo.getCurrentUser()) return router();
+    }
+    if (!(await repo.getUsers()).length) await repo.seedProfiles();
+    const users = await repo.getUsers();
+    if (token !== onboardToken) return;
     view.innerHTML = `
       <div class="onboarding">
-        <h1>Welkom bij Box App</h1>
+        <h1>${users.length ? 'Wie ben jij?' : 'Welkom bij Box App'}</h1>
         <div class="muted accent">Log. Compare. Get stronger.</div>
+        ${users.length ? `
+          <div class="users pick">
+            ${users.map(u => `<button class="u" data-pick="${u.id}"><span class="avatar lg">${avatarInner(u)}</span>${esc(u.name)}</button>`).join('')}
+          </div>
+          <div class="muted or">of maak een nieuw profiel</div>` : ''}
         <form id="onboard">
-          <div class="field"><label for="o-name">Hoe heet je?</label>
+          <div class="field"><label for="o-name">${users.length ? 'Nieuw profiel' : 'Hoe heet je?'}</label>
             <div class="stepper"><input id="o-name" autocomplete="given-name" maxlength="40" placeholder="Je naam" required /></div></div>
-          <button class="btn primary" type="submit">Profiel aanmaken</button>
+          <button class="btn ${users.length ? '' : 'primary'}" type="submit">Profiel aanmaken</button>
         </form>
       </div>`;
+    const done = async id => {
+      await repo.setCurrentUser(id);
+      document.querySelector('.tabbar').hidden = false;
+      location.hash = '#/';
+      router();
+    };
+    view.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => done(b.dataset.pick)));
     const input = document.getElementById('o-name');
-    input.focus();
+    if (!users.length) input.focus();
     document.getElementById('onboard').addEventListener('submit', async ev => {
       ev.preventDefault();
       const name = input.value.trim();
       if (!name) return;
+      const existing = users.find(u => u.name.trim().toLowerCase() === name.toLowerCase());
+      if (existing && confirm(`Er bestaat al een profiel "${existing.name}". Dat profiel gebruiken?`)) return done(existing.id);
       const user = await repo.addUser(name);
-      await repo.setCurrentUser(user.id);
-      document.querySelector('.tabbar').hidden = false;
-      location.hash = '#/';
-      router();
+      done(user.id);
     });
   }
 

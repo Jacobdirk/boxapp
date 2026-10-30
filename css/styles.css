@@ -206,3 +206,12 @@ label.btn { cursor: pointer; }
 .offline-choice p { margin: 10px 0; line-height: 1.4; }
 .backup-nudge { display: flex; align-items: center; gap: 10px; border: 1px solid rgba(251,191,36,.4); }
 .backup-nudge .btn { width: auto; margin: 0; padding: 8px 12px; }
+
+/* First boot profile picker */
+.users.pick { justify-content: center; margin: 24px 0 8px; }
+.users.pick .u { background: none; border: 0; cursor: pointer; font-size: .85rem; color: inherit; padding: 4px; }
+.users.pick .avatar.lg { width: 64px; height: 64px; font-size: 1.3rem; }
+.onboarding .or { text-align: center; margin: 12px 0 -8px; }
+.loading { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 24px; color: var(--muted); }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.2); border-top-color: currentColor; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

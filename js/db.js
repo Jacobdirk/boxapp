@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Data layer.
  * Data is stored as normalized "tables" (users, exercises, logs) with
  * numeric ids and foreign keys, so it maps 1:1 onto a future SQL schema:
@@ -16,7 +16,7 @@
  */
 (function () {
   const STORAGE_KEY = 'boxapp.db.v1';
-  const DB_VERSION = 11;
+  const DB_VERSION = 12;
   const SESSION_KEY = 'boxapp.session';
   const CFG = window.BOXAPP_CONFIG || {};
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
@@ -68,13 +68,14 @@
   // Quick swap groups (exercises.variant_group)
   const SEED_VARIANT_GROUPS = {
     row: ['Cable Row', 'Seated Row', 'Chest Supported Row', 'Dumbbell Row', 'Barbell Row'],
-    bench: ['Bench Press', 'Incline Bench Press', 'Dumbbell Bench Press', 'Incline Dumbbell Bench Press'],
+    bench: ['Bench Press', 'Incline Bench Press', 'Dumbbell Bench Press', 'Incline Dumbbell Bench Press', 'Push Ups'],
     deadlift: ['Hex Bar Deadlift', 'Deadlift', 'Romanian Deadlift'],
     shoulder_press: ['Shoulder Press', 'Dumbbell Shoulder Press', 'Machine Shoulder Press', 'Landmine Press'],
     olympic: ['Power Clean', 'Clean & Jerk', 'Snatch'],
     curl: ['Biceps Curl', 'Preacher Curl'],
     squat: ['Squat', 'Leg Press', 'Bulgarian Split Squat'],
-    triceps: ['Tricep Pulley', 'Skull Crushers'],
+    triceps: ['Tricep Pulley', 'Skull Crushers', 'Dips'],
+    traps: ['Shrugs', "Farmer's Walk"],
     pull_up: ['Pull Ups', 'Chin Ups', 'Lat Pulley']
   };
   const applyVariantGroups = exercises => {
@@ -204,6 +205,13 @@
         .map(f => mark({ ...f, user_id: users.get(f.user_id), exercise_id: exercises.get(f.exercise_id) }));
       db.meta = { version: 11, currentUserId: users.get(db.meta.currentUserId) ?? null, linked: false, cursors: {} };
     }
+    if (db.meta.version < 12) {
+      const before = new Map(db.exercises.map(e => [e.id, e.variant_group]));
+      applyVariantGroups(db.exercises);
+      db.exercises.filter(e => before.get(e.id) !== e.variant_group)
+        .forEach(e => Object.assign(e, { client_updated_at: nowIso(), dirty: true }));
+      db.meta.version = 12;
+    }
     return db;
   }
 
@@ -304,6 +312,7 @@
       const since = this.db.meta.lastBackup || '';
       return this._live('logs').filter(l => l.logged_at > since).length;
     }
+    get hasSynced() { return !!this.db.meta.lastSync; }
     needsLogin() { return this.remote.configured && !this.offlineMode && !this.remote.loggedIn; }
     async login(secret) { await this.remote.login(secret); this.setOfflineMode(false); await this.sync(); }
     logout() { this.remote.logout(); this._status('offline'); }
@@ -431,7 +440,7 @@
     async getUsers() { return this._live('users'); }
     async getCurrentUser() {
       const users = this._live('users');
-      return users.find(u => u.id === this.db.meta.currentUserId) || users[0] || null;
+      return users.find(u => u.id === this.db.meta.currentUserId) || null;
     }
     async setCurrentUser(id) { this.db.meta.currentUserId = id; this._save(false); }
     async addUser(name) {
@@ -446,6 +455,23 @@
         .forEach(e => this.db.favorites.push(this._touch({ user_id: user.id, exercise_id: e.id, created_at: user.created_at, deleted_at: null })));
       this._save();
       return user;
+    }
+    // Default profiles (fixed ids, so seeding on several devices merges instead of duplicating)
+    async seedProfiles() {
+      if (this._live('users').length) return;
+      const SEED_PROFILES = [
+        { id: '00000000-0000-4000-8000-000000000001', name: 'JD', favorites: null },
+        { id: '00000000-0000-4000-8000-000000000002', name: 'Bart', favorites: ['Cable Row', 'Hex Bar Deadlift', 'Bench Press', 'Shoulder Press', 'Cable Fly', 'Biceps Curl', 'Tricep Pulley', 'Shrugs'] }
+      ];
+      const created_at = nowIso();
+      for (const p of SEED_PROFILES) {
+        if (this.db.users.some(u => u.id === p.id)) continue;
+        const initials = p.name.split(/\s+/).map(s => s[0]).join('').slice(0, 2).toUpperCase();
+        this.db.users.push(this._touch({ id: p.id, name: p.name, initials, photo: null, created_at, deleted_at: null }));
+        this._live('exercises').filter(e => p.favorites ? p.favorites.includes(e.name) : e.category === 'main')
+          .forEach(e => this.db.favorites.push(this._touch({ user_id: p.id, exercise_id: e.id, created_at, deleted_at: null })));
+      }
+      this._save();
     }
     async updateUser(id, { name, photo }) {
       const user = this.db.users.find(u => u.id === id);
