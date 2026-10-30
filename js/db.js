@@ -337,7 +337,16 @@
         changed = await this._pull();
         // Always merge unsynced local exercises into remote ones with the same name (not only on first link)
         if (this._linkByName() || !this.db.meta.linked) changed = true;
-        await this._push();
+        try {
+          await this._push();
+        } catch (e) {
+          // Foreign key violation: rows were removed on the server (e.g. database reset) but still exist locally
+          if (!String(e.message).includes('23503')) throw e;
+          await this._reconcileMissing();
+          this._linkByName();
+          await this._push();
+          changed = true;
+        }
         changed = (await this._pull()) || changed;
         this.db.meta.linked = true;
         this.db.meta.lastSync = nowIso();
@@ -401,6 +410,14 @@
       }
       this.db.favorites = favs;
       return true;
+    }
+    // Mark local profiles/exercises that no longer exist remotely as unsynced, so they are merged by name or pushed again
+    async _reconcileMissing() {
+      for (const [local, remote] of [['users', 'profiles'], ['exercises', 'exercises']]) {
+        const ids = new Set((await this.remote.rest(`${remote}?select=id`)).map(r => r.id));
+        this.db[local].filter(r => !ids.has(r.id)).forEach(r => { r.dirty = true; });
+      }
+      this._save(false);
     }
     async _push() {
       for (const t of TABLES) {
@@ -468,7 +485,9 @@
         if (this.db.users.some(u => u.id === p.id)) continue;
         const initials = p.name.split(/\s+/).map(s => s[0]).join('').slice(0, 2).toUpperCase();
         this.db.users.push(this._touch({ id: p.id, name: p.name, initials, photo: null, created_at, deleted_at: null }));
+        const seen = new Set();
         this._live('exercises').filter(e => p.favorites ? p.favorites.includes(e.name) : e.category === 'main')
+          .filter(e => !seen.has(e.name) && seen.add(e.name))
           .forEach(e => this.db.favorites.push(this._touch({ user_id: p.id, exercise_id: e.id, created_at, deleted_at: null })));
       }
       this._save();

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #06121c; --card: #0d1e2b; --card2: #12283a; --border: #1c3a50;
   --text: #e8f1f5; --muted: #8aa3b3; --accent: #2ee59d; --accent-dark: #0f3d2c;
   --purple: #8b5cf6;
@@ -221,4 +221,5 @@ label.btn { cursor: pointer; }
 .musclemap .mm-svg { width: 110px; height: auto; display: block; }
 .musclemap .mm-body { fill: rgba(127,127,127,.15); stroke: rgba(127,127,127,.4); stroke-width: .6; }
 .musclemap path[data-m] { fill: #e5484d; stroke: rgba(0,0,0,.25); stroke-width: .3; }
+
 
