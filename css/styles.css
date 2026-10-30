@@ -223,3 +223,10 @@ label.btn { cursor: pointer; }
 .musclemap path[data-m] { fill: #e5484d; stroke: rgba(0,0,0,.25); stroke-width: .3; }
 
 
+.musclemap path[data-m] { cursor: pointer; transition: fill-opacity .15s; }
+.musclemap path[data-m]:hover { stroke: #fff; stroke-width: .6; }
+.musclemap path[data-m].sel { fill: #f5a524; fill-opacity: 1 !important; stroke: #fff; stroke-width: .8; }
+.mm-suggest { margin-top: 12px; }
+.mm-suggest-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.mm-close { background: none; border: 0; color: inherit; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+

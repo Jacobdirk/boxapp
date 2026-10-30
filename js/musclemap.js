@@ -42,6 +42,49 @@
   }
 
   const P = (m, d, s) => `<path data-m="${m}" d="${d}" style="fill-opacity:${(0.12 + .88 * (s[m] || 0)).toFixed(2)}"><title>${LABELS[m]}</title></path>`;
+  const escHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const agoText = iso => {
+    const d = Math.floor((Date.now() - new Date(iso)) / 864e5);
+    return d <= 0 ? 'vandaag' : d === 1 ? 'gisteren' : `${d} dagen geleden`;
+  };
+
+  // Exercises that train a muscle: favorites first, then most recently done, then how much they target the muscle
+  async function suggestionsFor(user, muscle) {
+    const favs = new Set((await repo.getFavoriteExercises(user.id)).map(e => e.id));
+    const last = {};
+    for (const l of await repo.getAllLogs(user.id)) if (!last[l.exercise_id] || l.logged_at > last[l.exercise_id]) last[l.exercise_id] = l.logged_at;
+    return (await repo.getExercises())
+      .map(e => ({ e, f: musclesFor(e)[muscle] || 0, fav: favs.has(e.id), last: last[e.id] || '' }))
+      .filter(x => x.f >= .5)
+      .sort((a, b) => (b.fav - a.fav) || b.last.localeCompare(a.last) || (b.f - a.f) || a.e.name.localeCompare(b.e.name));
+  }
+
+  async function showMuscle(muscle) {
+    const box = document.getElementById('mm-suggest');
+    if (!box || !currentUser) return;
+    document.querySelectorAll('.musclemap path[data-m]').forEach(p => p.classList.toggle('sel', p.dataset.m === muscle));
+    const list = await suggestionsFor(currentUser, muscle);
+    box.innerHTML = `
+      <div class="mm-suggest-head"><b>${LABELS[muscle]}</b><button class="mm-close" aria-label="Sluiten">✕</button></div>
+      ${list.length ? `<div class="list">${list.map(({ e, fav, last }) => `
+        <a class="row" href="#/exercise/${e.id}">
+          <div class="icon c-${e.color}">${renderExerciseIcon(e.icon)}</div>
+          <div class="grow"><div class="title">${escHtml(e.name)}${fav ? ' <span class="pb-fav">★</span>' : ''}</div><div class="muted">${last ? agoText(last) : 'Nog niet gedaan'}</div></div>
+          <span class="chev">›</span>
+        </a>`).join('')}</div>` : '<div class="muted">Geen oefeningen gevonden voor deze spiergroep</div>'}`;
+    box.hidden = false;
+  }
+
+  let currentUser = null;
+  document.addEventListener('click', e => {
+    const path = e.target.closest && e.target.closest('.musclemap path[data-m]');
+    if (path) return showMuscle(path.dataset.m);
+    if (e.target.closest && e.target.closest('.mm-close')) {
+      const box = document.getElementById('mm-suggest');
+      if (box) box.hidden = true;
+      document.querySelectorAll('.musclemap path.sel').forEach(p => p.classList.remove('sel'));
+    }
+  });
   const mirror = d => d.replace(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g, (_, x, y) => `${(100 - x).toFixed(1)},${y}`);
   const both = (m, d, s) => P(m, d, s) + P(m, mirror(d), s);
 
@@ -78,13 +121,15 @@
   }
 
   window.muscleMapCard = async function (user) {
+    currentUser = user;
     const s = await scores(user);
     const top = Object.entries(s).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([m]) => LABELS[m]);
     return `
       <h3>Spiergroepen · laatste ${DAYS} dagen</h3>
       <div class="card musclemap">
         <div class="mm-views"><div>${front(s)}<div class="muted">Voor</div></div><div>${back(s)}<div class="muted">Achter</div></div></div>
-        <div class="muted">${top.length ? 'Meest getraind: ' + top.join(', ') : 'Nog geen logs in de afgelopen week'}</div>
+        <div class="muted">${top.length ? 'Meest getraind: ' + top.join(', ') : 'Nog geen logs in de afgelopen week'} · tik op een spier voor oefeningen</div>
+        <div id="mm-suggest" class="mm-suggest" hidden></div>
       </div>`;
   };
 })();
