@@ -326,7 +326,8 @@
       let changed = false;
       try {
         changed = await this._pull();
-        if (!this.db.meta.linked) { this._linkByName(); changed = true; }
+        // Always merge unsynced local exercises into remote ones with the same name (not only on first link)
+        if (this._linkByName() || !this.db.meta.linked) changed = true;
         await this._push();
         changed = (await this._pull()) || changed;
         this.db.meta.linked = true;
@@ -373,14 +374,14 @@
     // First link of a device: reuse remote exercises with the same name instead of uploading duplicates
     _linkByName() {
       const remote = new Map();
-      this.db.exercises.filter(e => !e.dirty && !e.deleted_at).forEach(e => remote.set(e.name.toLowerCase(), e.id));
+      this.db.exercises.filter(e => !e.dirty && !e.deleted_at).forEach(e => { const k = (e.name || '').trim().toLowerCase(); if (!remote.has(k)) remote.set(k, e.id); });
       const map = new Map();
       this.db.exercises = this.db.exercises.filter(e => {
-        const target = e.dirty && remote.get((e.name || '').toLowerCase());
+        const target = e.dirty && remote.get((e.name || '').trim().toLowerCase());
         if (target && target !== e.id) { map.set(e.id, target); return false; }
         return true;
       });
-      if (!map.size) return;
+      if (!map.size) return false;
       this.db.logs.forEach(l => { if (map.has(l.exercise_id)) this._touch(Object.assign(l, { exercise_id: map.get(l.exercise_id) })); });
       const favs = [];
       for (const f of this.db.favorites) {
@@ -390,6 +391,7 @@
         else if (!f.deleted_at) dup.deleted_at = null;
       }
       this.db.favorites = favs;
+      return true;
     }
     async _push() {
       for (const t of TABLES) {
