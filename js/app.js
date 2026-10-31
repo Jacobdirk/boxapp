@@ -5,6 +5,7 @@
   const fmtShort = iso => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const fmtSet = l => `${l.weight} kg × ${l.reps}${l.sets ? ` (${l.sets} sets)` : ''}`;
   const fmtLast = l => `${l.weight} kg × ${l.reps}`;
+  const e1rm = l => l.reps <= 1 ? l.weight : +(l.weight * (1 + l.reps / 30)).toFixed(1);
   const BARBELL_EXERCISES = ['Bench Press', 'Squat', 'Barbell Row', 'Romanian Deadlift', 'Deadlift', 'Incline Bench Press', 'Skull Crushers', 'Power Clean', 'Clean & Jerk', 'Snatch', 'Shoulder Press', 'Shrugs', 'Hex Bar Deadlift'];
   const NO_PLATE_EXERCISES = ['Pull Ups', 'Chin Ups', 'Dips', 'Push Ups', 'Seated Row', 'Lat Raises', 'Biceps Curl', 'Preacher Curl', 'Hamstring Curl', 'Machine Shoulder Press', 'Bulgarian Split Squat', "Farmer's Walk"];
   const PLATE_SIZES = [20, 10, 5, 2.5, 1.25];
@@ -327,6 +328,9 @@
     const counts = Object.fromEntries(REP_RANGES.map(r => [r, rangeLogs(logs, r).length]));
     const recent = rangeLogs(logs, range).slice(-6);
     const max = Math.max(1, ...recent.map(l => l.weight));
+    const e1rmRecent = logs.filter(l => l.weight > 0).slice(0, 6).reverse();
+    const bestE1rm = Math.max(0, ...logs.map(e1rm));
+    const maxE1rm = Math.max(1, ...e1rmRecent.map(e1rm));
 
     view.innerHTML = `
       <button class="back" onclick="location.replace('#/')">←</button>
@@ -353,6 +357,14 @@
           <div class="bar ${l.carried ? 'carried' : ''}" style="height:${(l.weight / max) * 85}%" title="${fmtSet(l)}${l.carried ? ' (meer reps)' : ''}"></div>
           <div class="bar-label">${fmtShort(l.logged_at)}</div>
         </div>`).join('')}</div><div class="muted">Werkgewicht (kg) bij ${range === 12 ? '9+' : range === 1 ? '1' : `${REP_RANGES[REP_RANGES.indexOf(range) - 1] + 1}–${range}`} reps</div>` : `<div class="card empty">${logs.length ? 'Geen sessies in deze rep range' : 'Log je eerste set om progressie te zien'}</div>`}
+      ${e1rmRecent.length ? `<h3>Geschat 1RM</h3>
+      <div class="card last-row"><div><div class="muted">Beste</div><div class="big">${bestE1rm} kg</div></div><div><div class="muted">Laatste</div><div class="big">${e1rm(last)} kg</div></div></div>
+      <div class="chart">${e1rmRecent.map(l => `
+        <div class="bar-wrap">
+          <div class="bar-val">${e1rm(l)}</div>
+          <div class="bar" style="height:${(e1rm(l) / maxE1rm) * 85}%" title="${fmtSet(l)}"></div>
+          <div class="bar-label">${fmtShort(l.logged_at)}</div>
+        </div>`).join('')}</div><div class="muted">Geschat 1RM (kg) volgens Epley: gewicht × (1 + reps / 30)</div>` : ''}
       <h3>Geschiedenis</h3>
       <div class="card table">${logs.length ? logs.slice(0, 10).map(l => `
         <div class="tr"><span class="grow">${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span><button class="star" data-del="${l.id}" title="Verwijderen">✕</button></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
