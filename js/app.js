@@ -5,6 +5,7 @@
   const fmtShort = iso => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const fmtSet = l => `${l.weight} kg × ${l.reps}${l.sets ? ` (${l.sets} sets)` : ''}`;
   const fmtLast = l => `${l.weight} kg × ${l.reps}`;
+  const BARBELL_EXERCISES = ['Bench Press', 'Squat', 'Barbell Row', 'Romanian Deadlift', 'Deadlift', 'Incline Bench Press', 'Skull Crushers', 'Power Clean', 'Clean & Jerk', 'Snatch', 'Shoulder Press', 'Shrugs', 'Hex Bar Deadlift'];
   const delta = n => n > 0 ? `<span class="up">+${n}</span>` : n < 0 ? `<span class="down">${n}</span>` : `<span class="same">±0</span>`;
 
   const exerciseRow = e => `
@@ -346,13 +347,18 @@
         </div>`).join('')}</div><div class="muted">Werkgewicht (kg) bij ${range === 12 ? '9+' : range === 1 ? '1' : `${REP_RANGES[REP_RANGES.indexOf(range) - 1] + 1}–${range}`} reps</div>` : `<div class="card empty">${logs.length ? 'Geen sessies in deze rep range' : 'Log je eerste set om progressie te zien'}</div>`}
       <h3>Geschiedenis</h3>
       <div class="card table">${logs.length ? logs.slice(0, 10).map(l => `
-        <div class="tr"><span>${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
+        <div class="tr"><span class="grow">${fmtDate(l.logged_at)}</span><span>${fmtSet(l)}</span><button class="star" data-del="${l.id}" title="Verwijderen">✕</button></div>`).join('') : `<div class="empty">Nog geen sessies</div>`}
       </div>`;
     document.getElementById('fav')?.addEventListener('click', async () => {
       await repo.setFavorite(user.id, id, !fav);
       exerciseView(id, range);
     });
     view.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => exerciseView(id, +b.dataset.range)));
+    view.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      if (!confirm('Deze sessie verwijderen?')) return;
+      await repo.deleteLog(b.dataset.del);
+      exerciseView(id, range);
+    }));
   }
 
   async function logView(id) {
@@ -361,6 +367,10 @@
     if (!ex) return location.hash = '#/';
     const last = await repo.getLastLog(user.id, id);
     const state = { weight: last ? last.weight : 0, reps: last ? last.reps : 8, sets: last && last.sets ? last.sets : 3 };
+    const isBarbell = BARBELL_EXERCISES.includes(ex.name);
+    const BAR = isBarbell ? 10 : 0;
+    const toPlates = w => Math.max(0, +((w - BAR) / 2).toFixed(2));
+    state.plates = toPlates(state.weight);
 
     const stepper = (key, label, step) => `
       <div class="field"><label>${label}</label>
@@ -383,8 +393,11 @@
         </div>
       </div>
       <h3>Voer je gewicht en reps in</h3>
-      ${stepper('weight', 'Gewicht (kg)', 2.5)}
-      ${stepper('reps', 'Reps', 1)}
+      <div class="field-row">
+        ${stepper('weight', 'Gewicht (kg)', 2.5)}
+        ${stepper('reps', 'Reps', 1)}
+      </div>
+      ${stepper('plates', isBarbell ? `Kg schijven per kant (stang = ${BAR} kg)` : 'Kg per kant', 1.25)}
       <h3>Optioneel</h3>
       ${stepper('sets', 'Sets', 1)}
       <div id="cmp"></div>`;
@@ -399,12 +412,18 @@
         <div class="muted">(${fmtDate(last.logged_at)})</div>`;
     };
 
+    const sync = k => {
+      if (k === 'weight') document.getElementById('f-plates').value = toPlates(read('weight'));
+      else if (k === 'plates') document.getElementById('f-weight').value = +(read('plates') * 2 + BAR).toFixed(2);
+    };
+
     view.querySelectorAll('.stepper button').forEach(b => b.addEventListener('click', () => {
       const input = document.getElementById('f-' + b.dataset.k);
       input.value = Math.max(0, +(read(b.dataset.k) + parseFloat(b.dataset.d)).toFixed(2));
+      sync(b.dataset.k);
       renderCompare();
     }));
-    view.querySelectorAll('input').forEach(i => i.addEventListener('input', renderCompare));
+    view.querySelectorAll('input').forEach(i => i.addEventListener('input', () => { sync(i.id.slice(2)); renderCompare(); }));
     renderCompare();
 
     document.getElementById('save').addEventListener('click', async () => {
