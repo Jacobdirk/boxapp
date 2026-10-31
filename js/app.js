@@ -6,6 +6,14 @@
   const fmtSet = l => `${l.weight} kg × ${l.reps}${l.sets ? ` (${l.sets} sets)` : ''}`;
   const fmtLast = l => `${l.weight} kg × ${l.reps}`;
   const BARBELL_EXERCISES = ['Bench Press', 'Squat', 'Barbell Row', 'Romanian Deadlift', 'Deadlift', 'Incline Bench Press', 'Skull Crushers', 'Power Clean', 'Clean & Jerk', 'Snatch', 'Shoulder Press', 'Shrugs', 'Hex Bar Deadlift'];
+  const NO_PLATE_EXERCISES = ['Pull Ups', 'Chin Ups', 'Dips', 'Push Ups', 'Seated Row', 'Lat Raises', 'Biceps Curl', 'Preacher Curl', 'Hamstring Curl', 'Machine Shoulder Press', 'Bulgarian Split Squat', "Farmer's Walk"];
+  const PLATE_SIZES = [20, 10, 5, 2.5, 1.25];
+  const plateSetup = side => {
+    let rest = Math.round(side * 100) / 100;
+    const out = [];
+    for (const p of PLATE_SIZES) while (rest >= p - 1e-9) { out.push(p); rest = Math.round((rest - p) * 100) / 100; }
+    return { out, rest };
+  };
   const delta = n => n > 0 ? `<span class="up">+${n}</span>` : n < 0 ? `<span class="down">${n}</span>` : `<span class="same">±0</span>`;
 
   const exerciseRow = e => `
@@ -368,6 +376,7 @@
     const last = await repo.getLastLog(user.id, id);
     const state = { weight: last ? last.weight : 0, reps: last ? last.reps : 8, sets: last && last.sets ? last.sets : 3 };
     const isBarbell = BARBELL_EXERCISES.includes(ex.name);
+    const usesPlates = !NO_PLATE_EXERCISES.includes(ex.name) && !/dumbbell/i.test(ex.name);
     const BAR = isBarbell ? 10 : 0;
     const toPlates = w => Math.max(0, +((w - BAR) / 2).toFixed(2));
     state.plates = toPlates(state.weight);
@@ -397,7 +406,7 @@
         ${stepper('weight', 'Gewicht (kg)', 2.5)}
         ${stepper('reps', 'Reps', 1)}
       </div>
-      ${stepper('plates', isBarbell ? `Kg schijven per kant (stang = ${BAR} kg)` : 'Kg per kant', 1.25)}
+      ${usesPlates ? `<div class="field-row plates-row">${stepper('plates', isBarbell ? `Kg schijven per kant (stang = ${BAR} kg)` : 'Kg per kant', 1.25)}<div class="field plate-hint"><label>Schijven per kant</label><div id="plate-hint" class="muted"></div></div></div>` : ''}
       <h3>Optioneel</h3>
       ${stepper('sets', 'Sets', 1)}
       <div id="cmp"></div>`;
@@ -412,9 +421,17 @@
         <div class="muted">(${fmtDate(last.logged_at)})</div>`;
     };
 
+    const renderHint = () => {
+      const el = document.getElementById('plate-hint');
+      if (!el) return;
+      const { out, rest } = plateSetup(read('plates'));
+      el.textContent = (out.length ? out.join(' + ') : '—') + (rest > 0 ? ` (+${rest} kg rest)` : '');
+    };
     const sync = k => {
+      if (!usesPlates) return;
       if (k === 'weight') document.getElementById('f-plates').value = toPlates(read('weight'));
       else if (k === 'plates') document.getElementById('f-weight').value = +(read('plates') * 2 + BAR).toFixed(2);
+      renderHint();
     };
 
     view.querySelectorAll('.stepper button').forEach(b => b.addEventListener('click', () => {
@@ -425,6 +442,7 @@
     }));
     view.querySelectorAll('input').forEach(i => i.addEventListener('input', () => { sync(i.id.slice(2)); renderCompare(); }));
     renderCompare();
+    renderHint();
 
     document.getElementById('save').addEventListener('click', async () => {
       const weight = read('weight'), reps = Math.round(read('reps')), sets = Math.round(read('sets')) || null;

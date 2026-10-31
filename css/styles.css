@@ -53,6 +53,7 @@ h3 { font-size: .95rem; margin: 20px 0 8px; }
 .field { margin-top: 12px; }
 .field-row { display: flex; gap: 10px; }
 .field-row > .field { flex: 1; min-width: 0; }
+.plate-hint > div { padding: 10px 0; font-size: .95rem; }
 .table .tr .grow { flex: 1; }
 .table .tr .star { margin-left: 8px; }
 .field label { display: block; font-size: .85rem; margin-bottom: 6px; }
