@@ -859,7 +859,7 @@
     const token = ++onboardToken;
     document.querySelector('.tabbar').hidden = true;
     // First boot with sync: wait briefly for profiles from the cloud before offering choices
-    if (repo.syncEnabled && !repo.hasSynced && navigator.onLine) {
+    if (repo.syncEnabled && navigator.onLine && (!repo.hasSynced || !(await repo.getUsers()).length)) {
       view.innerHTML = `
         <div class="onboarding">
           <h1>Box App</h1>
@@ -869,7 +869,6 @@
       if (token !== onboardToken) return;
       if (await repo.getCurrentUser()) return router();
     }
-    if (!(await repo.getUsers()).length) await repo.seedProfiles();
     const users = await repo.getUsers();
     if (token !== onboardToken) return;
     view.innerHTML = `
@@ -989,7 +988,8 @@
   window.addEventListener('boxapp:auth-required', () => router());
   window.addEventListener('boxapp:remote-change', async () => {
     const a = document.activeElement;
-    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return;
+    const onboarding = !(await repo.getCurrentUser());
+    if (!onboarding && a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return;
     const y = window.scrollY;
     await router();
     window.scrollTo(0, y);

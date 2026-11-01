@@ -242,6 +242,11 @@
     }
     get configured() { return !!(this.url && this.key); }
     get loggedIn() { return !!this.session; }
+    // Supabase auth user id (JWT 'sub'); profiles are grouped per login via profiles.owner_id
+    get userId() {
+      try { return JSON.parse(atob(this.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || null; }
+      catch { return null; }
+    }
     _store(s) {
       this.session = s ? { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at || Math.floor(Date.now() / 1000) + (s.expires_in || 3600) } : null;
       if (this.session) localStorage.setItem(SESSION_KEY, JSON.stringify(this.session));
@@ -314,7 +319,14 @@
     }
     get hasSynced() { return !!this.db.meta.lastSync; }
     needsLogin() { return this.remote.configured && !this.offlineMode && !this.remote.loggedIn; }
-    async login(secret) { await this.remote.login(secret); this.setOfflineMode(false); await this.sync(); }
+    async login(secret) {
+      await this.remote.login(secret);
+      const owner = this.remote.userId;
+      // Different login key = different group of profiles: drop the local copy of the previous group
+      if (this.db.meta.ownerId && owner && this.db.meta.ownerId !== owner) this.db = migrate(seedDatabase());
+      this.setOfflineMode(false);
+      await this.sync();
+    }
     logout() { this.remote.logout(); this._status('offline'); }
     pendingCount() { return TABLES.reduce((n, t) => n + this.db[t.local].filter(r => r.dirty).length, 0); }
     _status(state, error = null) {
@@ -326,10 +338,21 @@
       clearTimeout(this._timer);
       this._timer = setTimeout(() => this.sync(), delay);
     }
-    async sync() {
+    // Concurrent callers wait for the running sync instead of returning immediately
+    sync() {
+      if (this._syncing) { this._again = true; return this._running; }
+      return (this._running = this._sync());
+    }
+    async _sync() {
       if (!this.syncEnabled || !this.remote.loggedIn) return;
+      if (!this.db.meta.ownerId) {
+        // First sync since profiles are grouped per login: drop cached rows of other groups, then pull own group again
+        this.db.meta.ownerId = this.remote.userId;
+        for (const t of ['users', 'logs', 'favorites']) this.db[t] = this.db[t].filter(r => r.dirty);
+        this.db.meta.cursors = {};
+        this._save(false);
+      }
       if (!navigator.onLine) return this._status('offline');
-      if (this._syncing) { this._again = true; return; }
       this._syncing = true;
       this._status('syncing');
       let changed = false;
@@ -472,25 +495,6 @@
         .forEach(e => this.db.favorites.push(this._touch({ user_id: user.id, exercise_id: e.id, created_at: user.created_at, deleted_at: null })));
       this._save();
       return user;
-    }
-    // Default profiles (fixed ids, so seeding on several devices merges instead of duplicating)
-    async seedProfiles() {
-      if (!this.syncEnabled || this._live('users').length) return;
-      const SEED_PROFILES = [
-        { id: '00000000-0000-4000-8000-000000000001', name: 'JD', favorites: null },
-        { id: '00000000-0000-4000-8000-000000000002', name: 'Bart', favorites: ['Cable Row', 'Hex Bar Deadlift', 'Bench Press', 'Shoulder Press', 'Cable Fly', 'Biceps Curl', 'Tricep Pulley', 'Shrugs'] }
-      ];
-      const created_at = nowIso();
-      for (const p of SEED_PROFILES) {
-        if (this.db.users.some(u => u.id === p.id)) continue;
-        const initials = p.name.split(/\s+/).map(s => s[0]).join('').slice(0, 2).toUpperCase();
-        this.db.users.push(this._touch({ id: p.id, name: p.name, initials, photo: null, created_at, deleted_at: null }));
-        const seen = new Set();
-        this._live('exercises').filter(e => p.favorites ? p.favorites.includes(e.name) : e.category === 'main')
-          .filter(e => !seen.has(e.name) && seen.add(e.name))
-          .forEach(e => this.db.favorites.push(this._touch({ user_id: p.id, exercise_id: e.id, created_at, deleted_at: null })));
-      }
-      this._save();
     }
     async updateUser(id, { name, photo }) {
       const user = this.db.users.find(u => u.id === id);
